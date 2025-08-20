@@ -8,7 +8,7 @@ from typing import Union, TypeVar, Type, Optional
 from pathlib import Path
 from datetime import datetime
 
-JEKYLL_ROOT = Path("../schrodlm.github.io/").resolve()
+JEKYLL_ROOT = Path("../.jekyll_repository/").resolve()
 OBSIDIAN_ROOT = Path("..").resolve()
 
 PUBLISH_DIR = OBSIDIAN_ROOT / "Publish"

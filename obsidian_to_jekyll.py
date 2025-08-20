@@ -8,8 +8,11 @@ from typing import Union, TypeVar, Type, Optional
 from pathlib import Path
 from datetime import datetime
 
-JEKYLL_ROOT = Path("../.jekyll_repository/").resolve()
-OBSIDIAN_ROOT = Path("..").resolve()
+# Get the directory where this script is located
+SCRIPT_DIR = Path(__file__).parent.resolve()
+
+JEKYLL_ROOT = (SCRIPT_DIR / "../.jekyll_repository/").resolve()
+OBSIDIAN_ROOT = (SCRIPT_DIR / "..").resolve()
 
 PUBLISH_DIR = OBSIDIAN_ROOT / "Publish"
 OBSIDIAN_IMAGE_DIR = OBSIDIAN_ROOT / "Assets" / "Images"

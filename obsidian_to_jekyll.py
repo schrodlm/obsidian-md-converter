@@ -14,8 +14,8 @@ SCRIPT_DIR = Path(__file__).parent.resolve()
 JEKYLL_ROOT = (SCRIPT_DIR / "../.jekyll_repository/").resolve()
 OBSIDIAN_ROOT = (SCRIPT_DIR / "..").resolve()
 
-PUBLISH_DIR = OBSIDIAN_ROOT / "Publish"
-OBSIDIAN_IMAGE_DIR = OBSIDIAN_ROOT / "Assets" / "Images"
+PUBLISH_DIR = OBSIDIAN_ROOT / "publish"
+OBSIDIAN_IMAGE_DIR = OBSIDIAN_ROOT / "assets" / "images"
 JEKYLL_IMAGE_DIR = JEKYLL_ROOT / "assets" / "img"
 
 #Check if directories exist:

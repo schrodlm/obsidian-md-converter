@@ -531,12 +531,34 @@ def build_link_mapping():
 
     return link_mapping
 
+def ensure_front_matter(filepath: JekyllPath):
+    """
+    Ensure a markdown file has front matter. If it doesn't, add minimal front matter.
+    Jekyll collections require front matter to process files.
+    """
+    content = filepath.read_text(encoding='utf-8')
+
+    # Check if file already has front matter
+    if content.startswith('---'):
+        return  # Already has front matter
+
+    # Extract title from filename (remove extension and convert hyphens to spaces)
+    title = filepath.stem.replace('-', ' ').title()
+
+    # Add minimal front matter
+    front_matter = f"---\nlayout: note\ntitle: \"{title}\"\n---\n\n"
+    new_content = front_matter + content
+    filepath.write_text(new_content, encoding='utf-8')
+
 def transfer_publish_file(source_filepath: ObsidianPath, target_directory: JekyllPath, link_mapping: dict = None):
     jekyll_filename = slugify(source_filepath)
 
     try:
         dst = target_directory / jekyll_filename
         copy_file(source_filepath, dst)
+
+        # Ensure the file has front matter (required for Jekyll collections)
+        ensure_front_matter(dst)
 
         transform_references(dst, link_mapping=link_mapping)
     except PublishTransformError as e:

@@ -520,7 +520,7 @@ def build_link_mapping():
                 # Build Jekyll URL based on collection
                 # Remove leading underscore from collection name for URL
                 collection_name = jekyll_collection.lstrip('_')
-                jekyll_url = f"/{collection_name}/{jekyll_slug_no_ext}/"
+                jekyll_url = f"/{collection_name}/{jekyll_slug_no_ext}.html"
 
                 # Map both the original title and lowercase version
                 link_mapping[note_title] = jekyll_url

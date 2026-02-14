@@ -20,6 +20,8 @@ JEKYLL_IMAGE_DIR = JEKYLL_ROOT / "assets" / "img"
 
 # Source directory to Jekyll collection mappings
 # Format: {source_relative_path: jekyll_collection_name}
+# Convention: If a directory contains 'front_page.md', it will be used as intro text
+#             for that collection's index page in Jekyll
 SOURCE_MAPPINGS = {
     'uni/courses': '_courses',
     'notes': '_notes',

@@ -531,21 +531,43 @@ def build_link_mapping():
 
     return link_mapping
 
-def ensure_front_matter(filepath: JekyllPath):
+def ensure_front_matter(filepath: JekyllPath, original_filename: str = None):
     """
-    Ensure a markdown file has front matter. If it doesn't, add minimal front matter.
-    Jekyll collections require front matter to process files.
+    Ensure a markdown file has front matter with proper title.
+    If file has front matter but no title, add title from original filename.
+    If file has no front matter, create minimal front matter with title.
+
+    Args:
+        filepath: Path to the Jekyll markdown file
+        original_filename: Original filename from Obsidian (before slugification) to preserve proper title with diacritics
     """
     content = filepath.read_text(encoding='utf-8')
 
+    # Extract title from original filename if provided
+    if original_filename:
+        title = Path(original_filename).stem  # Remove .md extension but keep original formatting
+    else:
+        title = filepath.stem.replace('-', ' ').title()
+
     # Check if file already has front matter
     if content.startswith('---'):
-        return  # Already has front matter
+        # Parse existing front matter
+        import re
+        match = re.match(r'^---\s*\n(.*?)\n---\s*\n(.*)$', content, re.DOTALL)
+        if match:
+            front_matter = match.group(1)
+            body = match.group(2)
 
-    # Extract title from filename (remove extension and convert hyphens to spaces)
-    title = filepath.stem.replace('-', ' ').title()
+            # Check if title already exists
+            if re.search(r'^title:', front_matter, re.MULTILINE):
+                return  # Already has title, don't modify
 
-    # Add minimal front matter
+            # Add title to existing front matter
+            new_front_matter = f"---\n{front_matter}\ntitle: \"{title}\"\n---\n{body}"
+            filepath.write_text(new_front_matter, encoding='utf-8')
+        return
+
+    # No front matter exists, add minimal front matter
     front_matter = f"---\nlayout: note\ntitle: \"{title}\"\n---\n\n"
     new_content = front_matter + content
     filepath.write_text(new_content, encoding='utf-8')
@@ -553,12 +575,15 @@ def ensure_front_matter(filepath: JekyllPath):
 def transfer_publish_file(source_filepath: ObsidianPath, target_directory: JekyllPath, link_mapping: dict = None):
     jekyll_filename = slugify(source_filepath)
 
+    # Store original filename to preserve title with diacritics
+    original_filename = Path(source_filepath).name
+
     try:
         dst = target_directory / jekyll_filename
         copy_file(source_filepath, dst)
 
-        # Ensure the file has front matter (required for Jekyll collections)
-        ensure_front_matter(dst)
+        # Ensure the file has front matter with proper title (required for Jekyll collections)
+        ensure_front_matter(dst, original_filename)
 
         transform_references(dst, link_mapping=link_mapping)
     except PublishTransformError as e:

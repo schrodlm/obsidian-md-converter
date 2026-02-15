@@ -1,11 +1,11 @@
-# Obsidian to Jekyll Conversion Configuration
+# Obsidian to Markdown Conversion Configuration
 
 # Root directories (relative to script location)
 paths:
   obsidian_root: ".."                    # Root of Obsidian vault
-  jekyll_root: "../.jekyll_repository"   # Root of Jekyll site
+  output_root: "../.jekyll_repository"   # Root of output site
 
-# Source directory to Jekyll collection mappings
+# Source directory to output destination mappings
 # Each entry specifies how to process files from a source directory
 source_mappings:
   - source: "uni/courses"
@@ -31,7 +31,7 @@ source_mappings:
 # Image handling
 images:
   source_dir: "assets/images"     # Obsidian image directory
-  destination_dir: "assets/img"   # Jekyll image directory
+  destination_dir: "assets/img"   # Output image directory
 
 # Link transformation settings
 links:
@@ -47,11 +47,18 @@ links:
 
 # Front matter settings
 front_matter:
-  # Automatically add front matter to files without it
+  # Enable front matter processing (required for Jekyll, Hugo, etc.)
+  # If false, skips all front matter processing
+  enabled: true
+
+  # Automatically add front matter to files that don't have any
+  # If false, only adds titles to existing front matter
   auto_add: true
 
-  # Default layout for files without one
+  # Default layout for new front matter (Jekyll-specific, e.g., "note", "post", "page")
+  # Only used when creating new front matter (when auto_add is true)
   default_layout: "note"
 
-  # Preserve original filename as title (with diacritics)
+  # Preserve original filename as title (with diacritics like "ABA problém")
+  # If false, uses slugified filename as title (like "Aba Problem")
   preserve_original_title: true

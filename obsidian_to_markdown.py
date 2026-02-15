@@ -25,22 +25,22 @@ def load_config():
     # Resolve paths relative to script directory
     config['_resolved_paths'] = {
         'obsidian_root': (SCRIPT_DIR / config['paths']['obsidian_root']).resolve(),
-        'jekyll_root': (SCRIPT_DIR / config['paths']['jekyll_root']).resolve(),
+        'output_root': (SCRIPT_DIR / config['paths']['output_root']).resolve(),
         'obsidian_image_dir': None,  # Will be set after reading config
-        'jekyll_image_dir': None,
+        'output_image_dir': None,
     }
 
     # Resolve image directories
     obsidian_root = config['_resolved_paths']['obsidian_root']
-    jekyll_root = config['_resolved_paths']['jekyll_root']
+    output_root = config['_resolved_paths']['output_root']
     config['_resolved_paths']['obsidian_image_dir'] = obsidian_root / config['images']['source_dir']
-    config['_resolved_paths']['jekyll_image_dir'] = jekyll_root / config['images']['destination_dir']
+    config['_resolved_paths']['output_image_dir'] = output_root / config['images']['destination_dir']
 
     # Validate directories exist
     if not obsidian_root.is_dir():
         raise FileNotFoundError(f"Obsidian root directory not found: {obsidian_root}")
-    if not jekyll_root.is_dir():
-        raise FileNotFoundError(f"Jekyll root directory not found: {jekyll_root}")
+    if not output_root.is_dir():
+        raise FileNotFoundError(f"Output root directory not found: {output_root}")
 
     return config
 
@@ -108,16 +108,16 @@ class ObsidianPath(BaseValidatedPath):
     """Path guaranteed to be within the Obsidian vault."""
     _root = None  # Will be set from config in main()
 
-class JekyllPath(BaseValidatedPath):
-    """Path guaranteed to be within the Jekyll site."""
+class OutputPath(BaseValidatedPath):
+    """Path guaranteed to be within the output site."""
     _root = None  # Will be set from config in main()
 
 # Old functions removed - now using config-based approach
 
 # DANGEROUS method, use with care!
 # Usable only in this directory
-def remove_contents_of(directory: JekyllPath):
-    if not directory.is_relative_to(JekyllPath._root):
+def remove_contents_of(directory: OutputPath):
+    if not directory.is_relative_to(OutputPath._root):
         raise RuntimeError("Trying to remove contents outside of this project! Aborted.")
 
     for root, dirs, files in os.walk(directory, topdown=False):
@@ -127,7 +127,7 @@ def remove_contents_of(directory: JekyllPath):
             (Path(root) / name).rmdir()
 
 """
-Retrieves the publish files that will be converted to jekyll-friendly files and published to the web
+Retrieves the files that will be converted to markdown and published to the output directory
 - currently it does assume that Publish subdirectories will not contain any nested subdirectories, if such a feature is wanted, it needs to be implemented here first and foremost
 """
 def get_directory_md_files(directory: Path) -> list[Path]:
@@ -212,7 +212,7 @@ def parse_date(date_str: str) -> Optional[datetime.date]:
 
 def slugify(filepath: ObsidianPath):
     """
-    Transform a filename into a URL-safe slug following Jekyll conventions.
+    Transform a filename into a URL-safe slug.
 
     Args:
         filepath: ObsidianPath object pointing to the file to convert
@@ -228,7 +228,7 @@ def slugify(filepath: ObsidianPath):
     Example:
         "Hello World!.md" -> "hello-world.md"
     NOTICE:
-        For Jekyll native '_posts' layout it must follow a specific naming convention: YYYY-MM-DD-title.markdown,
+        For Jekyll's native '_posts' collection it must follow a specific naming convention: YYYY-MM-DD-title.markdown,
         A simple parsing of markdown's metadata is necessary in order to handle this convention.
     """
     # Remove the file extension temporarily
@@ -272,7 +272,7 @@ def slugify(filepath: ObsidianPath):
 
 def transform_md_match(match: re.Match, src_dir: Path = None, dest_dir: Path = None):
     """
-    Transforms standard Markdown links and images - ![]() or []() - into Jekyll-compatible format.
+    Transforms standard Markdown links and images - ![]() or []() - processing images for output directory.
 
     Handles the following cases:
     - Image references (![alt](path)): 
@@ -319,13 +319,13 @@ def transform_md_match(match: re.Match, src_dir: Path = None, dest_dir: Path = N
 
 def transform_obsidian_match(match, src_dir: Path = None, dest_dir: Path = None, link_mapping: dict = None):
     """
-    Transforms Obsidian-style links ([[ ]]) into Jekyll-compatible format.
+    Transforms Obsidian-style links ([[ ]]) into standard markdown format.
 
     Args:
         match: re.Match object from Obsidian link pattern
         src_dir: Source directory for images (from config)
         dest_dir: Destination directory for images (from config)
-        link_mapping: Optional dict mapping note titles to Jekyll URLs
+        link_mapping: Optional dict mapping note titles to output URLs
 
     Returns:
         Transformed markdown string or display text
@@ -346,7 +346,7 @@ def transform_obsidian_match(match, src_dir: Path = None, dest_dir: Path = None,
     is_image = match.group(1) == '!'
     full_ref = match.group(2)
     if is_image:
-        new_content, relative_src_path = transform_image_ref(full_ref, dest_dir, JekyllPath._root)
+        new_content, relative_src_path = transform_image_ref(full_ref, dest_dir, OutputPath._root)
         dst_path = dest_dir / relative_src_path
         src_path = src_dir / relative_src_path
 
@@ -358,15 +358,15 @@ def transform_obsidian_match(match, src_dir: Path = None, dest_dir: Path = None,
     else:
         return transform_md_ref(full_ref, link_mapping) #transform document links using mapping
     
-def transform_references(filepath: JekyllPath, src_dir: ObsidianPath, dest_dir: JekyllPath, link_mapping: dict = None):
+def transform_references(filepath: OutputPath, src_dir: ObsidianPath, dest_dir: OutputPath, link_mapping: dict = None):
     """
-    Transform Obsidian-style references to Jekyll-compatible format.
+    Transform Obsidian-style references to standard markdown format.
     Handles both document links and image references.
 
-    Document links are now converted to Jekyll links using the provided link_mapping.
+    Document links are converted to standard markdown links using the provided link_mapping.
     If no mapping is provided, falls back to extracting display text only.
 
-    Image references are transferred from their source to the Jekyll image directory (from config)
+    Image references are transferred from their source to the output image directory (from config)
         Image reference can be in form:
         1. ![Alt text](path/to/image.png)
         2. ![[image.png]]                           - has to be in image folder (specified in Obsidian config)
@@ -393,11 +393,11 @@ def transform_references(filepath: JekyllPath, src_dir: ObsidianPath, dest_dir: 
 
 def transform_md_ref(full_ref: str, link_mapping: dict = None) -> str:
     """
-    Transform Obsidian document links to Jekyll markdown links.
+    Transform Obsidian document links to standard markdown links.
 
     Args:
         full_ref: The content inside [[...]]
-        link_mapping: Optional dict mapping note titles to Jekyll URLs
+        link_mapping: Optional dict mapping note titles to output URLs
 
     Returns:
         Markdown link if mapping found, otherwise display text or empty string
@@ -411,18 +411,18 @@ def transform_md_ref(full_ref: str, link_mapping: dict = None) -> str:
     note_title = parts[0]  # The actual note reference
     display_text = parts[1] if len(parts) > 1 else note_title  # Display text or title
 
-    # If we have a link mapping, try to convert to Jekyll link
+    # If we have a link mapping, try to convert to output link
     if link_mapping:
         # Try exact match first, then lowercase
-        jekyll_url = link_mapping.get(note_title) or link_mapping.get(note_title.lower())
+        output_url = link_mapping.get(note_title) or link_mapping.get(note_title.lower())
 
-        if jekyll_url:
-            return f"[{display_text}]({jekyll_url})"
+        if output_url:
+            return f"[{display_text}]({output_url})"
 
     # If no mapping found, return just the display text (backward compatible)
     return display_text
 
-def transform_image_ref(full_ref: str, new_parent_dir: JekyllPath, root: JekyllPath) -> str:
+def transform_image_ref(full_ref: str, new_parent_dir: OutputPath, root: OutputPath) -> str:
     """
     Transform Obsidian-style image references to standard Markdown.
     Handles all these cases:
@@ -470,25 +470,25 @@ def transform_image_ref(full_ref: str, new_parent_dir: JekyllPath, root: JekyllP
 def copy_file(src: Path, dst: Path):
     dst.write_bytes(src.read_bytes())
 
-def ensure_image_available(obsidian_img_path: Path, jekyll_img_path: Path) -> bool:
+def ensure_image_available(obsidian_img_path: Path, output_img_path: Path) -> bool:
     """Copy image if needed, returns success status"""
     if not obsidian_img_path.exists():
         raise PublishTransformError(obsidian_img_path, "Obsidian image path does not exist.")
-    if not jekyll_img_path.parent.exists():
-        jekyll_img_path.parent.mkdir(parents=True)
-    copy_file(obsidian_img_path, jekyll_img_path)
+    if not output_img_path.parent.exists():
+        output_img_path.parent.mkdir(parents=True)
+    copy_file(obsidian_img_path, output_img_path)
     return True
 
 def build_link_mapping(config):
     """
-    Build a mapping of note titles/filenames to their Jekyll URLs.
-    This enables conversion of [[wikilinks]] to proper Jekyll links.
+    Build a mapping of note titles/filenames to their output URLs.
+    This enables conversion of [[wikilinks]] to proper markdown links.
 
     Args:
         config: Configuration dictionary from YAML
 
     Returns:
-        Dictionary mapping note title (without extension) to Jekyll URL
+        Dictionary mapping note title (without extension) to output URL
         Example: {'2PC': '/notes/2pc/', 'NPRG077': '/courses/nprg077-...'}
     """
     link_mapping = {}
@@ -511,40 +511,44 @@ def build_link_mapping(config):
             # Get the note title (filename without extension)
             note_title = md_file.stem
 
-            # Generate the Jekyll slug
+            # Generate the output slug
             try:
-                jekyll_slug = slugify(ObsidianPath(md_file))
+                output_slug = slugify(ObsidianPath(md_file))
                 # Remove .md extension for URL
-                jekyll_slug_no_ext = Path(jekyll_slug).stem
+                output_slug_no_ext = Path(output_slug).stem
 
-                # Build Jekyll URL based on config format
-                # Remove leading underscore from collection name for URL
+                # Build output URL based on config format
+                # Remove leading underscore from collection name for URL (Jekyll convention)
                 collection_name = mapping['destination'].lstrip('_')
-                jekyll_url = url_format.format(collection=collection_name, slug=jekyll_slug_no_ext)
+                output_url = url_format.format(collection=collection_name, slug=output_slug_no_ext)
 
                 # Map both the original title and lowercase version
-                link_mapping[note_title] = jekyll_url
-                link_mapping[note_title.lower()] = jekyll_url
+                link_mapping[note_title] = output_url
+                link_mapping[note_title.lower()] = output_url
             except PublishTransformError:
                 # Skip files that can't be slugified
                 continue
 
     return link_mapping
 
-def ensure_front_matter(filepath: JekyllPath, original_filename: str = None):
+def ensure_front_matter(filepath: OutputPath, original_filename: str = None):
     """
-    Ensure a markdown file has front matter with proper title.
+    Ensure a markdown file has front matter with proper title (if enabled in config).
     If file has front matter but no title, add title from original filename.
     If file has no front matter, create minimal front matter with title.
 
     Args:
-        filepath: Path to the Jekyll markdown file
+        filepath: Path to the output markdown file
         original_filename: Original filename from Obsidian (before slugification) to preserve proper title with diacritics
     """
+    # Check if front matter processing is enabled
+    if not CONFIG.get('front_matter', {}).get('enabled', True):
+        return  # Skip front matter processing if disabled
+
     content = filepath.read_text(encoding='utf-8')
 
-    # Extract title from original filename if provided
-    if original_filename:
+    # Determine title based on preserve_original_title config
+    if CONFIG.get('front_matter', {}).get('preserve_original_title', True) and original_filename:
         title = Path(original_filename).stem  # Remove .md extension but keep original formatting
     else:
         title = filepath.stem.replace('-', ' ').title()
@@ -562,32 +566,37 @@ def ensure_front_matter(filepath: JekyllPath, original_filename: str = None):
             if re.search(r'^title:', front_matter, re.MULTILINE):
                 return  # Already has title, don't modify
 
-            # Add title to existing front matter
+            # Add title to existing front matter (even if auto_add is false, since front matter exists)
             new_front_matter = f"---\n{front_matter}\ntitle: \"{title}\"\n---\n{body}"
             filepath.write_text(new_front_matter, encoding='utf-8')
         return
 
-    # No front matter exists, add minimal front matter
-    front_matter = f"---\nlayout: note\ntitle: \"{title}\"\n---\n\n"
+    # No front matter exists - check if auto-add is enabled
+    if not CONFIG.get('front_matter', {}).get('auto_add', True):
+        return  # Skip adding new front matter if auto-add is disabled
+
+    # Add minimal front matter with configured default layout
+    default_layout = CONFIG.get('front_matter', {}).get('default_layout', 'note')
+    front_matter = f"---\nlayout: {default_layout}\ntitle: \"{title}\"\n---\n\n"
     new_content = front_matter + content
     filepath.write_text(new_content, encoding='utf-8')
 
-def transfer_publish_file(source_filepath: ObsidianPath, target_directory: JekyllPath, obsidian_image_dir: ObsidianPath, jekyll_image_dir: JekyllPath, link_mapping: dict = None):
-    jekyll_filename = slugify(source_filepath)
+def transfer_publish_file(source_filepath: ObsidianPath, target_directory: OutputPath, obsidian_image_dir: ObsidianPath, output_image_dir: OutputPath, link_mapping: dict = None):
+    output_filename = slugify(source_filepath)
 
     # Store original filename to preserve title with diacritics
     original_filename = Path(source_filepath).name
 
     try:
-        dst = target_directory / jekyll_filename
+        dst = target_directory / output_filename
         copy_file(source_filepath, dst)
 
-        # Ensure the file has front matter with proper title (required for Jekyll collections)
+        # Ensure the file has front matter with proper title (required for static site generators)
         ensure_front_matter(dst, original_filename)
 
-        transform_references(dst, obsidian_image_dir, jekyll_image_dir, link_mapping=link_mapping)
+        transform_references(dst, obsidian_image_dir, output_image_dir, link_mapping=link_mapping)
     except PublishTransformError as e:
-        #Remove the already copied file from the Jekyll directory
+        #Remove the already copied file from the output directory
         dst.unlink()
         raise e
 
@@ -602,7 +611,7 @@ def main():
 
     # Set path roots for validation classes from config
     ObsidianPath._root = CONFIG['_resolved_paths']['obsidian_root']
-    JekyllPath._root = CONFIG['_resolved_paths']['jekyll_root']
+    OutputPath._root = CONFIG['_resolved_paths']['output_root']
 
     # Phase 1: Build link mapping for all notes
     print("\nPhase 1: Building link mapping...")
@@ -613,21 +622,21 @@ def main():
     print("\nPhase 2: Transferring and transforming files...")
     for mapping in CONFIG['source_mappings']:
         source_dir = ObsidianPath._root / mapping['source']
-        jekyll_dir = JekyllPath._root / mapping['destination']
+        output_dir = OutputPath._root / mapping['destination']
 
         # Skip if source directory doesn't exist
         if not source_dir.exists():
             print(f"Skipping {mapping['source']} (directory not found)")
             continue
 
-        if not jekyll_dir.exists():
-            print(f"Warning: Jekyll directory {mapping['destination']} does not exist, skipping")
+        if not output_dir.exists():
+            print(f"Warning: Output directory {mapping['destination']} does not exist, skipping")
             continue
 
         print(f"\nProcessing: {mapping['source']} -> {mapping['destination']}")
 
-        # Remove contents of Jekyll subdirectory
-        remove_contents_of(JekyllPath(jekyll_dir))
+        # Remove contents of output subdirectory
+        remove_contents_of(OutputPath(output_dir))
 
         # Get all markdown files from source
         source_files = get_directory_md_files(source_dir)
@@ -635,7 +644,7 @@ def main():
 
         # Get image directories from config
         obsidian_image_dir = CONFIG['_resolved_paths']['obsidian_image_dir']
-        jekyll_image_dir = CONFIG['_resolved_paths']['jekyll_image_dir']
+        output_image_dir = CONFIG['_resolved_paths']['output_image_dir']
 
         # Transfer and transform files
         published = 0
@@ -643,9 +652,9 @@ def main():
             try:
                 transfer_publish_file(
                     ObsidianPath(source_file),
-                    JekyllPath(jekyll_dir),
+                    OutputPath(output_dir),
                     obsidian_image_dir,
-                    jekyll_image_dir,
+                    output_image_dir,
                     link_mapping
                 )
                 published += 1

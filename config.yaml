@@ -1,0 +1,57 @@
+# Obsidian to Jekyll Conversion Configuration
+
+# Root directories (relative to script location)
+paths:
+  obsidian_root: ".."                    # Root of Obsidian vault
+  jekyll_root: "../.jekyll_repository"   # Root of Jekyll site
+
+# Source directory to Jekyll collection mappings
+# Each entry specifies how to process files from a source directory
+source_mappings:
+  - source: "uni/courses"
+    destination: "_courses"
+    transform_links: true      # Convert [[wikilinks]] to markdown links
+    copy_images: true          # Copy and transform image references
+
+  - source: "notes"
+    destination: "_notes"
+    transform_links: true
+    copy_images: true
+
+  - source: "publish/posts"
+    destination: "_posts"
+    transform_links: true
+    copy_images: true
+
+  - source: "publish/projects"
+    destination: "_projects"
+    transform_links: true
+    copy_images: true
+
+# Image handling
+images:
+  source_dir: "assets/images"     # Obsidian image directory
+  destination_dir: "assets/img"   # Jekyll image directory
+
+# Link transformation settings
+links:
+  # URL format for generated links
+  # Available variables: {collection}, {slug}
+  url_format: "/{collection}/{slug}.html"
+
+  # If a link target is not found in the mapping:
+  # - "text": Extract display text only (backward compatible)
+  # - "keep": Keep original [[link]] format
+  # - "warn": Extract text but log warning
+  fallback_mode: "text"
+
+# Front matter settings
+front_matter:
+  # Automatically add front matter to files without it
+  auto_add: true
+
+  # Default layout for files without one
+  default_layout: "note"
+
+  # Preserve original filename as title (with diacritics)
+  preserve_original_title: true

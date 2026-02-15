@@ -4,6 +4,8 @@ import os
 import unicodedata
 import re
 import yaml
+import argparse
+import sys
 
 from typing import Union, TypeVar, Type, Optional
 from pathlib import Path
@@ -581,28 +583,155 @@ def ensure_front_matter(filepath: OutputPath, original_filename: str = None):
     new_content = front_matter + content
     filepath.write_text(new_content, encoding='utf-8')
 
-def transfer_publish_file(source_filepath: ObsidianPath, target_directory: OutputPath, obsidian_image_dir: ObsidianPath, output_image_dir: OutputPath, link_mapping: dict = None):
-    output_filename = slugify(source_filepath)
+def validate_file_readable(filepath: ObsidianPath):
+    """Check if file is readable. Raises PublishTransformError if not."""
+    try:
+        filepath.read_text(encoding='utf-8')
+    except Exception as e:
+        raise PublishTransformError(filepath, f"File not readable: {e}")
 
-    # Store original filename to preserve title with diacritics
+def validate_image_exists(img_ref: str, obsidian_image_dir: ObsidianPath, source_file: ObsidianPath):
+    """Check if referenced image exists. Raises PublishTransformError if not."""
+    img_path = obsidian_image_dir / img_ref
+    if not img_path.exists():
+        raise PublishTransformError(img_path, f"Referenced image does not exist: {img_ref} (in {source_file.name})")
+
+def validate_images_in_content(content: str, obsidian_image_dir: ObsidianPath, source_file: ObsidianPath):
+    """
+    Validate all image references in markdown content.
+    Raises PublishTransformError with all missing images listed if any are found.
+    """
+    missing_images = []
+
+    # Check Obsidian-style images: ![[image.png]]
+    obsidian_image_pattern = re.compile(r'!\[\[([^\]]+)\]\]')
+    for match in obsidian_image_pattern.finditer(content):
+        img_ref = match.group(1).split('|')[0]  # Remove size/alt text
+        img_path = obsidian_image_dir / img_ref
+        if not img_path.exists():
+            missing_images.append(img_ref)
+
+    # Check standard markdown images: ![alt](image.png)
+    md_image_pattern = re.compile(r'!\[([^\]]*)\]\(([^)]+)\)')
+    for match in md_image_pattern.finditer(content):
+        img_path_str = match.group(2)
+        # Only validate local images (not URLs)
+        if not (img_path_str.startswith('http://') or img_path_str.startswith('https://')):
+            img_path = obsidian_image_dir / img_path_str
+            if not img_path.exists():
+                missing_images.append(img_path_str)
+
+    if missing_images:
+        images_str = ", ".join(missing_images)
+        raise PublishTransformError(source_file, f"Missing image(s): {images_str}")
+
+def process_file(source_filepath: ObsidianPath, target_directory: OutputPath, obsidian_image_dir: ObsidianPath, output_image_dir: OutputPath, link_mapping: dict, validate_only: bool):
+    """
+    Process or validate a single file.
+
+    Args:
+        validate_only: If True, only validate without writing. If False, do full conversion.
+    """
+    # Always validate first
+    validate_file_readable(source_filepath)
+    content = source_filepath.read_text(encoding='utf-8')
+    validate_images_in_content(content, obsidian_image_dir, source_filepath)
+
+    # If validate_only, we're done
+    if validate_only:
+        return
+
+    # Otherwise, do the full conversion
+    output_filename = slugify(source_filepath)
     original_filename = Path(source_filepath).name
 
     try:
         dst = target_directory / output_filename
         copy_file(source_filepath, dst)
-
-        # Ensure the file has front matter with proper title (required for static site generators)
         ensure_front_matter(dst, original_filename)
-
         transform_references(dst, obsidian_image_dir, output_image_dir, link_mapping=link_mapping)
     except PublishTransformError as e:
-        #Remove the already copied file from the output directory
-        dst.unlink()
+        if dst.exists():
+            dst.unlink()
         raise e
+
+def process_mappings(link_mapping: dict, validate_only: bool):
+    """
+    Process all source->destination mappings.
+
+    Returns:
+        Tuple of (errors, warnings, total_files)
+    """
+    errors = []
+    warnings = []
+    total_files = 0
+
+    for mapping in CONFIG['source_mappings']:
+        source_dir = ObsidianPath._root / mapping['source']
+
+        if not source_dir.exists():
+            warnings.append(f"Source directory not found: {mapping['source']}")
+            continue
+
+        if not validate_only:
+            output_dir = OutputPath._root / mapping['destination']
+            if not output_dir.exists():
+                warnings.append(f"Output directory not found: {mapping['destination']}")
+                continue
+            print(f"\nProcessing: {mapping['source']} -> {mapping['destination']}")
+            remove_contents_of(OutputPath(output_dir))
+        else:
+            output_dir = None
+            print(f"\nValidating: {mapping['source']}")
+
+        source_files = get_directory_md_files(source_dir)
+        print(f"Found {len(source_files)} markdown files")
+        total_files += len(source_files)
+
+        obsidian_image_dir = CONFIG['_resolved_paths']['obsidian_image_dir']
+        output_image_dir = CONFIG['_resolved_paths']['output_image_dir'] if not validate_only else None
+
+        processed = 0
+        for source_file in source_files:
+            try:
+                process_file(
+                    ObsidianPath(source_file),
+                    OutputPath(output_dir) if output_dir else None,
+                    obsidian_image_dir,
+                    output_image_dir,
+                    link_mapping,
+                    validate_only
+                )
+                processed += 1
+                if not validate_only:
+                    print(f"Transferred {source_file.name}. [{processed}/{len(source_files)}]")
+            except PublishTransformError as e:
+                errors.append(f"{source_file.name}: {e.reason}")
+                if not validate_only:
+                    print(f"Transfer failed for {e.filepath}")
+                    print(f"Reason: {e.reason}")
+
+        if validate_only:
+            print(f"✓ Validated {processed}/{len(source_files)} files")
+
+    return (errors, warnings, total_files)
 
 def main():
     global CONFIG
-    print("Starting the transfer process...")
+
+    # Parse command-line arguments
+    parser = argparse.ArgumentParser(description='Convert Obsidian notes to standard markdown')
+    parser.add_argument('--validate', action='store_true',
+                       help='Only validate files without writing output')
+    args = parser.parse_args()
+
+    validate_only = args.validate
+
+    # Print header
+    if validate_only:
+        print("Running validation mode...")
+    else:
+        print("Starting the transfer process...")
 
     # Load configuration
     print("Loading configuration...")
@@ -611,59 +740,39 @@ def main():
 
     # Set path roots for validation classes from config
     ObsidianPath._root = CONFIG['_resolved_paths']['obsidian_root']
-    OutputPath._root = CONFIG['_resolved_paths']['output_root']
+    if not validate_only:
+        OutputPath._root = CONFIG['_resolved_paths']['output_root']
 
-    # Phase 1: Build link mapping for all notes
-    print("\nPhase 1: Building link mapping...")
+    # Build link mapping for all notes
+    print("\nBuilding link mapping...")
     link_mapping = build_link_mapping(CONFIG)
     print(f"✓ Built mapping for {len(link_mapping)} notes")
 
-    # Phase 2: Process each source directory mapping
-    print("\nPhase 2: Transferring and transforming files...")
-    for mapping in CONFIG['source_mappings']:
-        source_dir = ObsidianPath._root / mapping['source']
-        output_dir = OutputPath._root / mapping['destination']
+    # Process all files
+    errors, warnings, total_files = process_mappings(link_mapping, validate_only)
 
-        # Skip if source directory doesn't exist
-        if not source_dir.exists():
-            print(f"Skipping {mapping['source']} (directory not found)")
-            continue
-
-        if not output_dir.exists():
-            print(f"Warning: Output directory {mapping['destination']} does not exist, skipping")
-            continue
-
-        print(f"\nProcessing: {mapping['source']} -> {mapping['destination']}")
-
-        # Remove contents of output subdirectory
-        remove_contents_of(OutputPath(output_dir))
-
-        # Get all markdown files from source
-        source_files = get_directory_md_files(source_dir)
-        print(f"Found {len(source_files)} markdown files")
-
-        # Get image directories from config
-        obsidian_image_dir = CONFIG['_resolved_paths']['obsidian_image_dir']
-        output_image_dir = CONFIG['_resolved_paths']['output_image_dir']
-
-        # Transfer and transform files
-        published = 0
-        for source_file in source_files:
-            try:
-                transfer_publish_file(
-                    ObsidianPath(source_file),
-                    OutputPath(output_dir),
-                    obsidian_image_dir,
-                    output_image_dir,
-                    link_mapping
-                )
-                published += 1
-                print(f"Transferred {source_file.name}. [{published}/{len(source_files)}]")
-            except PublishTransformError as e:
-                print(f"Transfer failed for {e.filepath}")
-                print(f"Reason: {e.reason}")
-
-    print("\n✓ Transfer process completed!")
+    # Print summary
+    print("\n" + "="*60)
+    if len(errors) > 0:
+        print(f"{'Validation' if validate_only else 'Transfer'} FAILED")
+        print(f"   {len(errors)} error(s):")
+        for error in errors[:10]:
+            print(f"   - {error}")
+        if len(errors) > 10:
+            print(f"   ... and {len(errors) - 10} more")
+        if len(warnings) > 0:
+            print(f"   {len(warnings)} warning(s)")
+        sys.exit(1)
+    elif len(warnings) > 0:
+        print(f"{'Validation' if validate_only else 'Transfer'} completed with warnings")
+        for warning in warnings:
+            print(f"   - {warning}")
+        print(f"   {total_files} files processed")
+        sys.exit(0)
+    else:
+        print(f"{'Validation' if validate_only else 'Transfer'} completed successfully!")
+        print(f"   {total_files} files processed")
+        sys.exit(0)
 
 if __name__ == "__main__":
     main()

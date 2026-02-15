@@ -3,7 +3,7 @@
 # Root directories (relative to script location)
 paths:
   obsidian_root: ".."                    # Root of Obsidian vault
-  output_root: "../.jekyll_repository"   # Root of output site
+  output_root: "/tmp/jekyll_repository"   # Root of output site
 
 # Source directory to output destination mappings
 # Each entry specifies how to process files from a source directory

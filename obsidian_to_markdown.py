@@ -38,11 +38,9 @@ def load_config():
     config['_resolved_paths']['obsidian_image_dir'] = obsidian_root / config['images']['source_dir']
     config['_resolved_paths']['output_image_dir'] = output_root / config['images']['destination_dir']
 
-    # Validate directories exist
+    # Validate obsidian root exists
     if not obsidian_root.is_dir():
         raise FileNotFoundError(f"Obsidian root directory not found: {obsidian_root}")
-    if not output_root.is_dir():
-        raise FileNotFoundError(f"Output root directory not found: {output_root}")
 
     return config
 
@@ -655,9 +653,14 @@ def process_file(source_filepath: ObsidianPath, target_directory: OutputPath, ob
             dst.unlink()
         raise e
 
-def process_mappings(link_mapping: dict, validate_only: bool):
+def process_mappings(link_mapping: dict, validate_only: bool, force_create: bool = False):
     """
     Process all source->destination mappings.
+
+    Args:
+        link_mapping: Dictionary mapping note filenames to their paths
+        validate_only: If True, only validate without writing
+        force_create: If True, create output directories if they don't exist
 
     Returns:
         Tuple of (errors, warnings, total_files)
@@ -676,8 +679,12 @@ def process_mappings(link_mapping: dict, validate_only: bool):
         if not validate_only:
             output_dir = OutputPath._root / mapping['destination']
             if not output_dir.exists():
-                warnings.append(f"Output directory not found: {mapping['destination']}")
-                continue
+                if force_create:
+                    print(f"Creating output directory: {mapping['destination']}")
+                    output_dir.mkdir(parents=True, exist_ok=True)
+                else:
+                    warnings.append(f"Output directory not found: {mapping['destination']}")
+                    continue
             print(f"\nProcessing: {mapping['source']} -> {mapping['destination']}")
             remove_contents_of(OutputPath(output_dir))
         else:
@@ -712,9 +719,49 @@ def process_mappings(link_mapping: dict, validate_only: bool):
                     print(f"Reason: {e.reason}")
 
         if validate_only:
-            print(f"✓ Validated {processed}/{len(source_files)} files")
+            print(f"Sucessfully validated {processed}/{len(source_files)} files")
 
     return (errors, warnings, total_files)
+
+def apply_cli_overrides(config: dict, obsidian_root_arg: str, output_root_arg: str,
+                        obsidian_image_dir_arg: str, output_image_dir_arg: str):
+    """
+    Apply command-line argument overrides to the configuration.
+
+    Args:
+        config: The loaded configuration dictionary
+        obsidian_root_arg: Command-line override for obsidian root
+        output_root_arg: Command-line override for output root
+        obsidian_image_dir_arg: Command-line override for obsidian image dir (relative)
+        output_image_dir_arg: Command-line override for output image dir (relative)
+    """
+    # Determine final root directories (CLI overrides or config defaults)
+    obsidian_root = Path(obsidian_root_arg).resolve() if obsidian_root_arg else config['_resolved_paths']['obsidian_root']
+    output_root = Path(output_root_arg).resolve() if output_root_arg else config['_resolved_paths']['output_root']
+
+    # Determine final image directories (CLI overrides or config defaults, relative to roots)
+    obsidian_image_subdir = obsidian_image_dir_arg if obsidian_image_dir_arg else config['images']['source_dir']
+    output_image_subdir = output_image_dir_arg if output_image_dir_arg else config['images']['destination_dir']
+
+    # Calculate final absolute paths
+    obsidian_image_dir = obsidian_root / obsidian_image_subdir
+    output_image_dir = output_root / output_image_subdir
+
+    # Update config with final resolved paths
+    config['_resolved_paths']['obsidian_root'] = obsidian_root
+    config['_resolved_paths']['output_root'] = output_root
+    config['_resolved_paths']['obsidian_image_dir'] = obsidian_image_dir
+    config['_resolved_paths']['output_image_dir'] = output_image_dir
+
+    # Print what was overridden
+    if obsidian_root_arg:
+        print(f"Using command-line obsidian root: {obsidian_root}")
+    if output_root_arg:
+        print(f"Using command-line output root: {output_root}")
+    if obsidian_image_dir_arg:
+        print(f"Using command-line obsidian image dir: {obsidian_image_dir}")
+    if output_image_dir_arg:
+        print(f"Using command-line output image dir: {output_image_dir}")
 
 def main():
     global CONFIG
@@ -723,9 +770,24 @@ def main():
     parser = argparse.ArgumentParser(description='Convert Obsidian notes to standard markdown')
     parser.add_argument('--validate', action='store_true',
                        help='Only validate files without writing output')
+    parser.add_argument('--force', action='store_true',
+                       help='Create output directories if they do not exist')
+    parser.add_argument('--obsidian-root', type=str,
+                       help='Override Obsidian vault root directory')
+    parser.add_argument('--output-root', type=str,
+                       help='Override output root directory')
+    parser.add_argument('--obsidian-image-dir', type=str,
+                       help='Override Obsidian image directory (relative to obsidian-root)')
+    parser.add_argument('--output-image-dir', type=str,
+                       help='Override output image directory (relative to output-root)')
     args = parser.parse_args()
 
     validate_only = args.validate
+    force_create = args.force
+    obsidian_root_arg = args.obsidian_root
+    output_root_arg = args.output_root
+    obsidian_image_dir_arg = args.obsidian_image_dir
+    output_image_dir_arg = args.output_image_dir
 
     # Print header
     if validate_only:
@@ -736,20 +798,41 @@ def main():
     # Load configuration
     print("Loading configuration...")
     CONFIG = load_config()
-    print(f"✓ Loaded configuration from {CONFIG_FILE}")
+    print(f"Sucessfully loaded configuration from {CONFIG_FILE}")
+
+    # Apply command-line overrides
+    apply_cli_overrides(CONFIG, obsidian_root_arg, output_root_arg,
+                       obsidian_image_dir_arg, output_image_dir_arg)
 
     # Set path roots for validation classes from config
     ObsidianPath._root = CONFIG['_resolved_paths']['obsidian_root']
+
     if not validate_only:
         OutputPath._root = CONFIG['_resolved_paths']['output_root']
+
+        # Create output root directory if force flag is set
+        output_root = CONFIG['_resolved_paths']['output_root']
+        if not output_root.exists():
+            if force_create:
+                print(f"Creating output root directory: {output_root}")
+                output_root.mkdir(parents=True, exist_ok=True)
+            else:
+                raise FileNotFoundError(f"Output root directory not found: {output_root}")
+
+        # Create output image directory if force flag is set
+        output_image_dir = CONFIG['_resolved_paths']['output_image_dir']
+        if not output_image_dir.exists():
+            if force_create:
+                print(f"Creating output image directory: {output_image_dir}")
+                output_image_dir.mkdir(parents=True, exist_ok=True)
 
     # Build link mapping for all notes
     print("\nBuilding link mapping...")
     link_mapping = build_link_mapping(CONFIG)
-    print(f"✓ Built mapping for {len(link_mapping)} notes")
+    print(f"Built mapping for {len(link_mapping)} notes")
 
     # Process all files
-    errors, warnings, total_files = process_mappings(link_mapping, validate_only)
+    errors, warnings, total_files = process_mappings(link_mapping, validate_only, force_create)
 
     # Print summary
     print("\n" + "="*60)

@@ -581,6 +581,33 @@ def ensure_front_matter(filepath: OutputPath, original_filename: str = None):
     new_content = front_matter + content
     filepath.write_text(new_content, encoding='utf-8')
 
+def fix_front_matter_tabs(content: str) -> str:
+    """
+    Replace tab indentation with spaces in YAML front matter.
+    Tabs are not valid for YAML indentation per the YAML spec.
+
+    Args:
+        content: Full file content
+
+    Returns:
+        Content with tabs replaced by spaces in front matter only.
+    """
+    if not content.startswith('---'):
+        return content
+
+    match = re.match(r'^---\s*\n(.*?)\n---\s*\n(.*)$', content, re.DOTALL)
+    if not match:
+        return content
+
+    front_matter = match.group(1)
+    body = match.group(2)
+
+    if '\t' not in front_matter:
+        return content
+
+    fixed_front_matter = front_matter.replace('\t', '  ')
+    return f"---\n{fixed_front_matter}\n---\n{body}"
+
 def validate_file_readable(filepath: ObsidianPath):
     """Check if file is readable. Raises PublishTransformError if not."""
     try:
@@ -623,21 +650,37 @@ def validate_images_in_content(content: str, obsidian_image_dir: ObsidianPath, s
         images_str = ", ".join(missing_images)
         raise PublishTransformError(source_file, f"Missing image(s): {images_str}")
 
-def process_file(source_filepath: ObsidianPath, target_directory: OutputPath, obsidian_image_dir: ObsidianPath, output_image_dir: OutputPath, link_mapping: dict, validate_only: bool):
+def process_file(source_filepath: ObsidianPath, target_directory: OutputPath, obsidian_image_dir: ObsidianPath, output_image_dir: OutputPath, link_mapping: dict, validate_only: bool, fix_source: bool = False):
     """
     Process or validate a single file.
 
     Args:
         validate_only: If True, only validate without writing. If False, do full conversion.
+        fix_source: If True, automatically fix warnings in the source file.
+
+    Returns:
+        List of warning messages (may be empty).
     """
+    file_warnings = []
+
     # Always validate first
     validate_file_readable(source_filepath)
     content = source_filepath.read_text(encoding='utf-8')
     validate_images_in_content(content, obsidian_image_dir, source_filepath)
 
+    # Check for tabs in front matter
+    fixed_content = fix_front_matter_tabs(content)
+    if fixed_content != content:
+        if fix_source:
+            source_filepath.write_text(fixed_content, encoding='utf-8')
+            file_warnings.append(f"{source_filepath.name}: Fixed tabs in front matter YAML")
+            content = fixed_content
+        else:
+            file_warnings.append(f"{source_filepath.name}: Tabs in front matter YAML (use --fix to resolve)")
+
     # If validate_only, we're done
     if validate_only:
-        return
+        return file_warnings
 
     # Otherwise, do the full conversion
     output_filename = slugify(source_filepath)
@@ -646,6 +689,11 @@ def process_file(source_filepath: ObsidianPath, target_directory: OutputPath, ob
     try:
         dst = target_directory / output_filename
         copy_file(source_filepath, dst)
+
+        # Write fixed content to output if tabs were found
+        if fixed_content != content:
+            dst.write_text(fixed_content, encoding='utf-8')
+
         ensure_front_matter(dst, original_filename)
         transform_references(dst, obsidian_image_dir, output_image_dir, link_mapping=link_mapping)
     except PublishTransformError as e:
@@ -653,7 +701,9 @@ def process_file(source_filepath: ObsidianPath, target_directory: OutputPath, ob
             dst.unlink()
         raise e
 
-def process_mappings(link_mapping: dict, validate_only: bool, force_create: bool = False):
+    return file_warnings
+
+def process_mappings(link_mapping: dict, validate_only: bool, force_create: bool = False, fix_source: bool = False):
     """
     Process all source->destination mappings.
 
@@ -661,6 +711,7 @@ def process_mappings(link_mapping: dict, validate_only: bool, force_create: bool
         link_mapping: Dictionary mapping note filenames to their paths
         validate_only: If True, only validate without writing
         force_create: If True, create output directories if they don't exist
+        fix_source: If True, automatically fix warnings in source files
 
     Returns:
         Tuple of (errors, warnings, total_files)
@@ -701,14 +752,16 @@ def process_mappings(link_mapping: dict, validate_only: bool, force_create: bool
         processed = 0
         for source_file in source_files:
             try:
-                process_file(
+                file_warnings = process_file(
                     ObsidianPath(source_file),
                     OutputPath(output_dir) if output_dir else None,
                     obsidian_image_dir,
                     output_image_dir,
                     link_mapping,
-                    validate_only
+                    validate_only,
+                    fix_source
                 )
+                warnings.extend(file_warnings)
                 processed += 1
                 if not validate_only:
                     print(f"Transferred {source_file.name}. [{processed}/{len(source_files)}]")
@@ -772,6 +825,8 @@ def main():
                        help='Only validate files without writing output')
     parser.add_argument('--force', action='store_true',
                        help='Create output directories if they do not exist')
+    parser.add_argument('--fix', action='store_true',
+                       help='Automatically resolve warnings in source files')
     parser.add_argument('--obsidian-root', type=str,
                        help='Override Obsidian vault root directory')
     parser.add_argument('--output-root', type=str,
@@ -784,6 +839,7 @@ def main():
 
     validate_only = args.validate
     force_create = args.force
+    fix_source = args.fix
     obsidian_root_arg = args.obsidian_root
     output_root_arg = args.output_root
     obsidian_image_dir_arg = args.obsidian_image_dir
@@ -832,7 +888,7 @@ def main():
     print(f"Built mapping for {len(link_mapping)} notes")
 
     # Process all files
-    errors, warnings, total_files = process_mappings(link_mapping, validate_only, force_create)
+    errors, warnings, total_files = process_mappings(link_mapping, validate_only, force_create, fix_source)
 
     # Print summary
     print("\n" + "="*60)

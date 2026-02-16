@@ -9,7 +9,7 @@ import sys
 
 from typing import Union, TypeVar, Type, Optional
 from pathlib import Path
-from datetime import datetime
+from front_matter import create_front_matter, FrontMatter
 
 # Get the directory where this script is located
 SCRIPT_DIR = Path(__file__).parent.resolve()
@@ -133,89 +133,13 @@ Retrieves the files that will be converted to markdown and published to the outp
 def get_directory_md_files(directory: Path) -> list[Path]:
     return list(directory.glob("*.md"))
 
-
-
-def read_md_metadata(markdown_path: Path):
-    """Extract metadata from markdown file's front matter.
-
-    Args:
-        markdown_path: Path to a markdown file
-    
-    Returns:
-        Dictionary containung the metadata key-value pairs.
-        Returns empty dict if no metadata is found or file can't be read.
-    """
-    metadata = {}
-    try:
-        with markdown_path.open('r', encoding='utf-8') as file:
-            lines = iter(file)
-
-            #Find the opening "---"
-            for line in lines:
-                if line.strip() == "---":
-                    break
-            # No front matter found
-            else:
-                return metadata
-
-            for line in lines:
-                line = line.strip()
-                if line == "---":
-                    return metadata
-                if not line or ':' not in line:
-                    continue #Skip empty or invalid lines
-                
-                key,value = line.split(':', 1)
-                metadata[key.strip()] = value.strip()
-    except (IOError, UnicodeDecodeError):
-        return {}
-    return {}
-
-
-def parse_date(date_str: str) -> Optional[datetime.date]:
-    """
-    Parse a date string in various formats into a datetime.date object.
-    
-    Supported formats:
-    - YYYY-MM-DD (2024-12-20)
-    - DD.MM.YYYY (20.12.2024)
-    - DD/MM/YYYY (20/12/2024)
-    - MM/DD/YYYY (12/20/2024)
-    - Month DD, YYYY (December 20, 2024)
-    - DD Month YYYY (20 December 2024)
-    - YYYYMMDD (20241220)
-    
-    Returns:
-        datetime.date object if parsing succeeds, None otherwise
-    """
-    if not date_str:
-        return None
-    date_str = date_str.strip()
-
-    # Try common formats in order
-    formats = [
-        '%Y-%m-%d',    # 2024-12-20
-        '%d.%m.%Y',    # 20.12.2024
-        '%d/%m/%Y',    # 20/12/2024
-        '%m/%d/%Y',    # 12/20/2024
-        '%B %d, %Y',   # December 20, 2024
-        '%d %B %Y',    # 20 December 2024
-        '%Y%m%d',      # 20241220
-    ]
-    
-    for fmt in formats:
-        try:
-            return datetime.strptime(date_str, fmt)
-        except ValueError:
-            continue
-    return None
-
-def slugify(filepath: ObsidianPath):
+def slugify(filepath: ObsidianPath, fm: FrontMatter):
     """
     Transform a filename into a URL-safe slug.
 
     Args:
         filepath: ObsidianPath object pointing to the file to convert
+        metadata: Pre-parsed front matter metadata dict.
 
     Returns:
         A sanitized filename with:
@@ -227,46 +151,31 @@ def slugify(filepath: ObsidianPath):
 
     Example:
         "Hello World!.md" -> "hello-world.md"
-    NOTICE:
-        For Jekyll's native '_posts' collection it must follow a specific naming convention: YYYY-MM-DD-title.markdown,
-        A simple parsing of markdown's metadata is necessary in order to handle this convention.
     """
+
     # Remove the file extension temporarily
     stem = Path(filepath).stem.strip()
     ext = Path(filepath).suffix.strip()
 
     # Normalize unicode characters (convert é to e, etc.)
     stem = unicodedata.normalize('NFKD', stem)
-    
+
     # Convert to ASCII, ignoring non-ASCII chars
     stem = stem.encode('ascii', 'ignore').decode('ascii')
-    
+
     # Replace various special characters with hyphens
     stem = re.sub(r'[^\w\s-]', '', stem)  # Remove remaining non-word chars
     stem = re.sub(r'[\s_-]+', '-', stem)  # Convert spaces/underscores to hyphens
-    
+
     # Convert to lowercase and reattach extension
     slug = stem.lower() + ext.lower()
 
-    # Special case for post layouts
-    metadata = read_md_metadata(filepath)
-    if metadata.get("layout") == "post":
-        date_str = metadata.get("date")
-        if not date_str:
-            raise PublishTransformError(
-                filepath=str(filepath),
-                reason="Missing date field for post layout"
-            )
-        parsed_date = parse_date(date_str)
-        if parsed_date is not None:
-            date_prefix = f"{parsed_date.year:04d}-{parsed_date.month:02d}-{parsed_date.day:02d}"
-            slug = f"{date_prefix}-{slug}"
-        else:
-            raise PublishTransformError(
-                filepath=str(filepath),
-                reason="Invalid date front matter provided for a post layout."
-            )
-            
+    # Apply front matter specific slug transformations (e.g. Jekyll post date prefix)
+    try:
+        slug = fm.apply_slug_transform(slug)
+    except ValueError as e:
+        raise PublishTransformError(filepath=str(filepath), reason=str(e))
+
     return slug
 
 
@@ -513,7 +422,9 @@ def build_link_mapping(config):
 
             # Generate the output slug
             try:
-                output_slug = slugify(ObsidianPath(md_file))
+                content = md_file.read_text(encoding='utf-8')
+                fm = FrontMatter(content)
+                output_slug = slugify(ObsidianPath(md_file), fm)
                 # Remove .md extension for URL
                 output_slug_no_ext = Path(output_slug).stem
 
@@ -531,82 +442,6 @@ def build_link_mapping(config):
 
     return link_mapping
 
-def ensure_front_matter(filepath: OutputPath, original_filename: str = None):
-    """
-    Ensure a markdown file has front matter with proper title (if enabled in config).
-    If file has front matter but no title, add title from original filename.
-    If file has no front matter, create minimal front matter with title.
-
-    Args:
-        filepath: Path to the output markdown file
-        original_filename: Original filename from Obsidian (before slugification) to preserve proper title with diacritics
-    """
-    # Check if front matter processing is enabled
-    if not CONFIG.get('front_matter', {}).get('enabled', True):
-        return  # Skip front matter processing if disabled
-
-    content = filepath.read_text(encoding='utf-8')
-
-    # Determine title based on preserve_original_title config
-    if CONFIG.get('front_matter', {}).get('preserve_original_title', True) and original_filename:
-        title = Path(original_filename).stem  # Remove .md extension but keep original formatting
-    else:
-        title = filepath.stem.replace('-', ' ').title()
-
-    # Check if file already has front matter
-    if content.startswith('---'):
-        # Parse existing front matter
-        import re
-        match = re.match(r'^---\s*\n(.*?)\n---\s*\n(.*)$', content, re.DOTALL)
-        if match:
-            front_matter = match.group(1)
-            body = match.group(2)
-
-            # Check if title already exists
-            if re.search(r'^title:', front_matter, re.MULTILINE):
-                return  # Already has title, don't modify
-
-            # Add title to existing front matter (even if auto_add is false, since front matter exists)
-            new_front_matter = f"---\n{front_matter}\ntitle: \"{title}\"\n---\n{body}"
-            filepath.write_text(new_front_matter, encoding='utf-8')
-        return
-
-    # No front matter exists - check if auto-add is enabled
-    if not CONFIG.get('front_matter', {}).get('auto_add', True):
-        return  # Skip adding new front matter if auto-add is disabled
-
-    # Add minimal front matter with configured default layout
-    default_layout = CONFIG.get('front_matter', {}).get('default_layout', 'note')
-    front_matter = f"---\nlayout: {default_layout}\ntitle: \"{title}\"\n---\n\n"
-    new_content = front_matter + content
-    filepath.write_text(new_content, encoding='utf-8')
-
-def fix_front_matter_tabs(content: str) -> str:
-    """
-    Replace tab indentation with spaces in YAML front matter.
-    Tabs are not valid for YAML indentation per the YAML spec.
-
-    Args:
-        content: Full file content
-
-    Returns:
-        Content with tabs replaced by spaces in front matter only.
-    """
-    if not content.startswith('---'):
-        return content
-
-    match = re.match(r'^---\s*\n(.*?)\n---\s*\n(.*)$', content, re.DOTALL)
-    if not match:
-        return content
-
-    front_matter = match.group(1)
-    body = match.group(2)
-
-    if '\t' not in front_matter:
-        return content
-
-    fixed_front_matter = front_matter.replace('\t', '  ')
-    return f"---\n{fixed_front_matter}\n---\n{body}"
 
 def validate_file_readable(filepath: ObsidianPath):
     """Check if file is readable. Raises PublishTransformError if not."""
@@ -668,13 +503,14 @@ def process_file(source_filepath: ObsidianPath, target_directory: OutputPath, ob
     content = source_filepath.read_text(encoding='utf-8')
     validate_images_in_content(content, obsidian_image_dir, source_filepath)
 
+    # Parse front matter once
+    fm = create_front_matter(content, CONFIG)
+
     # Check for tabs in front matter
-    fixed_content = fix_front_matter_tabs(content)
-    if fixed_content != content:
+    if fm.fix_tabs():
         if fix_source:
-            source_filepath.write_text(fixed_content, encoding='utf-8')
+            source_filepath.write_text(fm.serialize(), encoding='utf-8')
             file_warnings.append(f"{source_filepath.name}: Fixed tabs in front matter YAML")
-            content = fixed_content
         else:
             file_warnings.append(f"{source_filepath.name}: Tabs in front matter YAML (use --fix to resolve)")
 
@@ -683,18 +519,26 @@ def process_file(source_filepath: ObsidianPath, target_directory: OutputPath, ob
         return file_warnings
 
     # Otherwise, do the full conversion
-    output_filename = slugify(source_filepath)
+    output_filename = slugify(source_filepath, fm)
     original_filename = Path(source_filepath).name
 
     try:
         dst = target_directory / output_filename
-        copy_file(source_filepath, dst)
 
-        # Write fixed content to output if tabs were found
-        if fixed_content != content:
-            dst.write_text(fixed_content, encoding='utf-8')
+        # Apply front matter processing
+        fm_config = CONFIG.get('front_matter', {})
+        if fm_config.get('enabled', True):
+            # Determine title from original filename (before slugification)
+            if fm_config.get('preserve_original_title', True) and original_filename:
+                title = Path(original_filename).stem
+            else:
+                title = Path(output_filename).stem.replace('-', ' ').title()
 
-        ensure_front_matter(dst, original_filename)
+            fm.ensure(title)
+
+        # Single write to output
+        dst.write_text(fm.serialize(), encoding='utf-8')
+
         transform_references(dst, obsidian_image_dir, output_image_dir, link_mapping=link_mapping)
     except PublishTransformError as e:
         if dst.exists():

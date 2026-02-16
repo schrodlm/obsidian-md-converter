@@ -47,18 +47,20 @@ links:
 
 # Front matter settings
 front_matter:
-  # Enable front matter processing (required for Jekyll, Hugo, etc.)
+  # Enable front matter processing
   # If false, skips all front matter processing
   enabled: true
 
-  # Automatically add front matter to files that don't have any
-  # If false, only adds titles to existing front matter
-  auto_add: true
+  # Front matter type: "base" (generic) or "jekyll"
+  type: "jekyll"
 
-  # Default layout for new front matter (Jekyll-specific, e.g., "note", "post", "page")
-  # Only used when creating new front matter (when auto_add is true)
-  default_layout: "note"
-
-  # Preserve original filename as title (with diacritics like "ABA problém")
-  # If false, uses slugified filename as title (like "Aba Problem")
+  # Preserve original filename as title in front matter (e.g. "ABA problém" instead of "aba-problem")
+  # Useful because filenames get slugified during conversion
   preserve_original_title: true
+
+  # Jekyll-specific settings (only used when type is "jekyll")
+  jekyll:
+    # Automatically create front matter for files that don't have any
+    auto_add: true
+    # Default layout value when creating new front matter
+    default_layout: "note"

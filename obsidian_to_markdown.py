@@ -9,7 +9,8 @@ import sys
 
 from pathlib import Path
 from front_matter import create_front_matter, FrontMatter
-from paths import PublishTransformError, ObsidianPath, OutputPath
+from paths import ObsidianPath, OutputPath
+from errors import ConversionError
 
 # Get the directory where this script is located
 SCRIPT_DIR = Path(__file__).parent.resolve()
@@ -109,7 +110,7 @@ def slugify(filepath: ObsidianPath, fm: FrontMatter):
     try:
         slug = fm.apply_slug_transform(slug)
     except ValueError as e:
-        raise PublishTransformError(filepath=str(filepath), reason=str(e))
+        raise ConversionError(filepath=str(filepath), reason=str(e))
 
     return slug
 
@@ -317,7 +318,7 @@ def copy_file(src: Path, dst: Path):
 def ensure_image_available(obsidian_img_path: Path, output_img_path: Path) -> bool:
     """Copy image if needed, returns success status"""
     if not obsidian_img_path.exists():
-        raise PublishTransformError(obsidian_img_path, "Obsidian image path does not exist.")
+        raise ConversionError(obsidian_img_path, "Obsidian image path does not exist.")
     if not output_img_path.parent.exists():
         output_img_path.parent.mkdir(parents=True)
     copy_file(obsidian_img_path, output_img_path)
@@ -371,7 +372,7 @@ def build_link_mapping(config):
                 # Map both the original title and lowercase version
                 link_mapping[note_title] = output_url
                 link_mapping[note_title.lower()] = output_url
-            except PublishTransformError:
+            except ConversionError:
                 # Skip files that can't be slugified
                 continue
 
@@ -379,22 +380,22 @@ def build_link_mapping(config):
 
 
 def validate_file_readable(filepath: ObsidianPath):
-    """Check if file is readable. Raises PublishTransformError if not."""
+    """Check if file is readable. Raises ConversionError if not."""
     try:
         filepath.read_text(encoding='utf-8')
     except Exception as e:
-        raise PublishTransformError(filepath, f"File not readable: {e}")
+        raise ConversionError(filepath, f"File not readable: {e}")
 
 def validate_image_exists(img_ref: str, obsidian_image_dir: ObsidianPath, source_file: ObsidianPath):
-    """Check if referenced image exists. Raises PublishTransformError if not."""
+    """Check if referenced image exists. Raises ConversionError if not."""
     img_path = obsidian_image_dir / img_ref
     if not img_path.exists():
-        raise PublishTransformError(img_path, f"Referenced image does not exist: {img_ref} (in {source_file.name})")
+        raise ConversionError(img_path, f"Referenced image does not exist: {img_ref} (in {source_file.name})")
 
 def validate_images_in_content(content: str, obsidian_image_dir: ObsidianPath, source_file: ObsidianPath):
     """
     Validate all image references in markdown content.
-    Raises PublishTransformError with all missing images listed if any are found.
+    Raises ConversionError with all missing images listed if any are found.
     """
     missing_images = []
 
@@ -418,7 +419,7 @@ def validate_images_in_content(content: str, obsidian_image_dir: ObsidianPath, s
 
     if missing_images:
         images_str = ", ".join(missing_images)
-        raise PublishTransformError(source_file, f"Missing image(s): {images_str}")
+        raise ConversionError(source_file, f"Missing image(s): {images_str}")
 
 def process_file(source_filepath: ObsidianPath, target_directory: OutputPath, obsidian_image_dir: ObsidianPath, output_image_dir: OutputPath, link_mapping: dict, validate_only: bool, fix_source: bool = False):
     """
@@ -475,7 +476,7 @@ def process_file(source_filepath: ObsidianPath, target_directory: OutputPath, ob
         dst.write_text(fm.serialize(), encoding='utf-8')
 
         transform_references(dst, obsidian_image_dir, output_image_dir, link_mapping=link_mapping)
-    except PublishTransformError as e:
+    except ConversionError as e:
         if dst.exists():
             dst.unlink()
         raise e
@@ -544,7 +545,7 @@ def process_mappings(link_mapping: dict, validate_only: bool, force_create: bool
                 processed += 1
                 if not validate_only:
                     print(f"Transferred {source_file.name}. [{processed}/{len(source_files)}]")
-            except PublishTransformError as e:
+            except ConversionError as e:
                 errors.append(f"{source_file.name}: {e.reason}")
                 if not validate_only:
                     print(f"Transfer failed for {e.filepath}")

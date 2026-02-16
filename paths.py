@@ -2,22 +2,6 @@ from typing import Union, TypeVar, Type
 from pathlib import Path
 
 
-class PublishTransformError(Exception):
-    """Exception raised when a file cannot be transformed for publishing."""
-
-    def __init__(self, filepath: str, reason: str):
-        """
-        Args:
-            file_path: Path to the file that failed transformation
-            reason: Explanation of why the transformation failed
-            original_exception: Optional original exception that caused the failure
-        """
-        self.filepath = filepath
-        self.reason = reason
-        message = f"Failed to transform '{filepath}': {reason}"
-        super().__init__(message)
-
-
 T = TypeVar('T', bound='BaseValidatedPath')
 
 

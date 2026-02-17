@@ -110,6 +110,7 @@ def slugify(filepath: ObsidianPath, fm: FrontMatter):
     try:
         slug = fm.apply_slug_transform(slug)
     except ValueError as e:
+        # TODO: This probably doesnt need to be a program ending error
         raise ConversionError(filepath=str(filepath), reason=str(e))
 
     return slug
@@ -313,6 +314,7 @@ def transform_image_ref(full_ref: str, new_parent_dir: OutputPath, root: OutputP
     
 
 def copy_file(src: Path, dst: Path):
+    # TODO: Src should always be in obsidian root while dst should always be in output path
     dst.write_bytes(src.read_bytes())
 
 def ensure_image_available(obsidian_img_path: Path, output_img_path: Path) -> bool:

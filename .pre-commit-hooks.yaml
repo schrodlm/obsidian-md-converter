@@ -1,0 +1,7 @@
+- id: obsidian-validate
+  name: Validate Obsidian notes
+  description: Validates Obsidian markdown files (front matter, image refs, etc.)
+  entry: obsidian-md-converter --validate
+  language: python
+  types: [markdown]
+  pass_filenames: false

@@ -8,28 +8,31 @@ import argparse
 import sys
 
 from pathlib import Path
-from front_matter import create_front_matter, FrontMatter
-from paths import ObsidianPath, OutputPath
-from errors import ConversionError
+from obsidian_md_converter.front_matter import create_front_matter, FrontMatter
+from obsidian_md_converter.paths import ObsidianPath, OutputPath
+from obsidian_md_converter.errors import ConversionError
 
-# Get the directory where this script is located
-SCRIPT_DIR = Path(__file__).parent.resolve()
-CONFIG_FILE = SCRIPT_DIR / "config.yaml"
+# Default config location (next to the package)
+DEFAULT_CONFIG = Path(__file__).parent.parent.resolve() / "config.yaml"
 
-# Load configuration
-def load_config():
-    """Load configuration from YAML file."""
-    if not CONFIG_FILE.exists():
-        raise FileNotFoundError(f"Configuration file not found: {CONFIG_FILE}")
+def load_config(config_path: Path):
+    """Load configuration from YAML file.
 
-    with open(CONFIG_FILE, 'r', encoding='utf-8') as f:
+    Args:
+        config_path: Path to the configuration file.
+    """
+    if not config_path.exists():
+        raise FileNotFoundError(f"Configuration file not found: {config_path}")
+
+    with open(config_path, 'r', encoding='utf-8') as f:
         config = yaml.safe_load(f)
 
-    # Resolve paths relative to script directory
+    # Resolve paths relative to config file's directory
+    config_dir = config_path.parent.resolve()
     config['_resolved_paths'] = {
-        'obsidian_root': (SCRIPT_DIR / config['paths']['obsidian_root']).resolve(),
-        'output_root': (SCRIPT_DIR / config['paths']['output_root']).resolve(),
-        'obsidian_image_dir': None,  # Will be set after reading config
+        'obsidian_root': (config_dir / config['paths']['obsidian_root']).resolve(),
+        'output_root': (config_dir / config['paths']['output_root']).resolve(),
+        'obsidian_image_dir': None,
         'output_image_dir': None,
     }
 
@@ -617,6 +620,8 @@ def main():
                        help='Override Obsidian image directory (relative to obsidian-root)')
     parser.add_argument('--output-image-dir', type=str,
                        help='Override output image directory (relative to output-root)')
+    parser.add_argument('--config', type=str, default=None,
+                       help='Path to config file (default: config.yaml next to the package)')
     args = parser.parse_args()
 
     validate_only = args.validate
@@ -634,9 +639,10 @@ def main():
         print("Starting the transfer process...")
 
     # Load configuration
+    config_path = Path(args.config).resolve() if args.config else DEFAULT_CONFIG
     print("Loading configuration...")
-    CONFIG = load_config()
-    print(f"Sucessfully loaded configuration from {CONFIG_FILE}")
+    CONFIG = load_config(config_path)
+    print(f"Sucessfully loaded configuration from {config_path}")
 
     # Apply command-line overrides
     apply_cli_overrides(CONFIG, obsidian_root_arg, output_root_arg,

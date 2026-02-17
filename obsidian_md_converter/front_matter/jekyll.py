@@ -1,5 +1,5 @@
 from .base import FrontMatter
-from utils import parse_date
+from obsidian_md_converter.utils import parse_date
 
 
 class JekyllFrontMatter(FrontMatter):

@@ -1,47 +1,55 @@
+from dataclasses import dataclass, field
+
 from obsidian_md_converter.paths import ObsidianPath, OutputPath
-from dataclasses import dataclass
+from obsidian_md_converter.errors import ConfigError
+
 
 @dataclass
 class MappingFlags():
-    def __init__(self):
-        self.transform_links = False
-        self.copy_images = False
+    transform_links: bool = False
+    copy_images: bool = False
 
 # Class to represent mapping of different subdirectories of root to the output dirs and 
 # provide a way to define specific settings for them
-@dataclass
+@dataclass(frozen=True)
 class Mapping():
+    source: ObsidianPath
+    destination: OutputPath
+    flags: MappingFlags = field(compare=False, hash=False)
 
-    #  Mapping needs to follow a specific format:
-    #   
+    @classmethod
+    def from_yaml(cls, entry : dict) -> "Mapping":
+        required_keys = ['source', 'destination']
+        
+        for key in required_keys:
+            if key not in entry:
+                raise ConfigError(f"Required key {key} missing.")
+        
+        source = entry.get('source') 
+        destination = entry.get('destination')
 
-    def __init__(self, src : ObsidianPath, dst : OutputPath, flags: MappingFlags):
-        self.src = src
-        self.dst = dst
-        self.flags = flags
+        mf = MappingFlags()
+        for attr, _ in mf.__dict__.items():
+            if entry.get(attr):
+                setattr(mf,attr, True)
+        
+        return Mapping(source,destination,mf)
 
-def parse_raw_mappings(raw_mappings : list[str]) -> list[Mapping]:
-
-    mappings: list[Mapping] = []
-
-    for raw_mapping in raw_mappings:
-        parts = raw_mapping.split(':')
+    @classmethod
+    def from_string(cls, entry: str) -> "Mapping":
+        parts = entry.split(':')
         if len(parts) < 2:
-            raise ValueError(f"Mapping must have at least src:dst, got \"{raw_mapping}\"")
+            raise ConfigError(f"Mapping must have at least src:dst, got \"{entry}\"")
         src, dst = parts[0], parts[1]
         flags = parts[2:]
 
-        mapping_flag = MappingFlags()
+        mf = MappingFlags()
         for flag in flags:
-            if hasattr(mapping_flag, flag):
-                setattr(mapping_flag, flag, True)
+            if hasattr(mf, flag):
+                setattr(mf, flag, True)
             else:
-                raise ValueError(f"Error: No such flag \"{flag}\" exists.")
+                raise ConfigError(f"No such flag \"{flag}\" exists.")
 
-        mappings.append(Mapping(src, dst, mapping_flag))
-    return mappings
+        return Mapping(src, dst, mf)
 
-def apply_mapping(mappings: list[Mapping], config: "Config" ) -> None:
-    pass
-    
             

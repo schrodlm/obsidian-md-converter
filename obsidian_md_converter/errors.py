@@ -11,3 +11,8 @@ class ConversionError(Exception):
         self.reason = reason
         message = f"Failed to convert '{filepath}': {reason}"
         super().__init__(message)
+
+class ConfigError(Exception):
+    """Exception raised when needed config value is not provided or is invalid."""
+    def __init__(self, message: str):
+        super().__init__(message)

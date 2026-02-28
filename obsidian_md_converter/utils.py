@@ -1,4 +1,5 @@
 import datetime
+from pathlib import Path
 
 
 def parse_date(date_str: str) -> datetime.date | None:
@@ -38,3 +39,22 @@ def parse_date(date_str: str) -> datetime.date | None:
         except ValueError:
             continue
     return None
+
+def enforce_dir(path: Path):
+    if not path.exists():
+        print(f"Creating directory: {path}")
+        path.mkdir(parents=True, exist_ok=True)
+
+
+def nested_get(d: dict, *keys):
+    """Safely traverse nested dict keys, return None if any key is missing.
+
+    Example:
+        nested_get(config, 'paths', 'obsidian_root')  # config['paths']['obsidian_root'] or None
+    """
+    value = d
+    for key in keys:
+        if not isinstance(value, dict) or key not in value:
+            return None
+        value = value[key]
+    return value

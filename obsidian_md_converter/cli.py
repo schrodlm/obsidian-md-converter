@@ -622,6 +622,8 @@ def main():
                        help='Override output image directory (relative to output-root)')
     parser.add_argument('--config', type=str, default=None,
                        help='Path to config file (default: config.yaml next to the package)')
+    parser.add_argument('--mapping', type=str, action='append', default=None,
+                        help='Provide specific mappings (format: src:dst:flag1:flag2:...). Specified flags are set.')
     args = parser.parse_args()
 
     validate_only = args.validate

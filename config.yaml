@@ -1,37 +1,22 @@
 # Obsidian to Markdown Conversion Configuration
 
-# Root directories (relative to script location)
+# Root directories (absolute or relative to this config file)
 paths:
-  obsidian_root: ".."                    # Root of Obsidian vault
-  output_root: "/tmp/jekyll_repository"   # Root of output site
+  obsidian_root: ""       # Path to your Obsidian vault
+  output_root: ""         # Path to output directory
 
 # Source directory to output destination mappings
 # Each entry specifies how to process files from a source directory
-source_mappings:
-  - source: "uni/courses"
-    destination: "_courses"
-    transform_links: true      # Convert [[wikilinks]] to markdown links
-    copy_images: true          # Copy and transform image references
+source_mappings: []
+  # - source: "notes"
+  #   destination: "_notes"
+  #   transform_links: true
+  #   copy_images: true
 
-  - source: "notes"
-    destination: "_notes"
-    transform_links: true
-    copy_images: true
-
-  - source: "publish/posts"
-    destination: "_posts"
-    transform_links: true
-    copy_images: true
-
-  - source: "publish/projects"
-    destination: "_projects"
-    transform_links: true
-    copy_images: true
-
-# Image handling
+# Image handling (relative to their respective roots)
 images:
-  source_dir: "assets/images"     # Obsidian image directory
-  destination_dir: "assets/img"   # Output image directory
+  source_dir: "assets/images"
+  destination_dir: "assets/img"
 
 # Link transformation settings
 links:
@@ -48,19 +33,16 @@ links:
 # Front matter settings
 front_matter:
   # Enable front matter processing
-  # If false, skips all front matter processing
   enabled: true
 
   # Front matter type: "base" (generic) or "jekyll"
-  type: "jekyll"
+  type: "base"
 
-  # Preserve original filename as title in front matter (e.g. "ABA problém" instead of "aba-problem")
-  # Useful because filenames get slugified during conversion
-  preserve_original_title: true
+  # Preserve original filename as title in front matter
+  preserve_original_title: false
 
-  # Jekyll-specific settings (only used when type is "jekyll")
-  jekyll:
-    # Automatically create front matter for files that don't have any
-    auto_add: true
-    # Default layout value when creating new front matter
-    default_layout: "note"
+# Runtime defaults (can be overridden via CLI flags)
+runtime:
+  validate_only: false
+  force_create: false
+  fix_source: false

@@ -275,7 +275,7 @@ class TestDefaults:
         assert config.validate_only is False
         assert config.force_create is False
         assert config.fix_source is False
-        assert config.source_mappings == []
+        assert config.source_mappings == set()
 
     def test_yaml_overrides_defaults(self, full_yaml):
         config = Config(config_path=full_yaml)

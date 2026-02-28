@@ -4,6 +4,7 @@ import yaml
 from obsidian_md_converter.paths import ObsidianPath, OutputPath
 from obsidian_md_converter.errors import ConfigError
 from obsidian_md_converter.utils import nested_get
+from obsidian_md_converter.mapping import Mapping
 
 # Default config location (next to the package)
 DEFAULT_CONFIG_PATH = Path(__file__).parent.parent.resolve() / "config.yaml"
@@ -75,12 +76,15 @@ class Config:
         )
 
         # --- Source mappings (optional — can be provided via CLI instead) ---
-        #TODO: Introduce Mapping class
-        self.source_mappings = self._resolve(
-            self._overrides.get('source_mappings'),
-            nested_get(self._raw_config,'source_mappings'),
-            default=[],
-        )
+        self.source_mappings : set[Mapping] = set()
+        
+        # overrides take priority in the set 
+        for string_mapping in self._overrides.get('source_mappings') or []:
+            self.source_mappings.add(Mapping.from_string(string_mapping))
+
+        for yaml_mapping in self._raw_config.get('source_mappings') or []:
+            self.source_mappings.add(Mapping.from_yaml(yaml_mapping))
+
 
         # --- Links (optional with defaults) ---
         #TODO: Introduce link class

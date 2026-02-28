@@ -12,6 +12,7 @@ from obsidian_md_converter.paths import ObsidianPath, OutputPath
 from obsidian_md_converter.errors import ConversionError
 from obsidian_md_converter.config import Config
 from obsidian_md_converter.utils import enforce_dir
+from obsidian_md_converter.mapping import Mapping
 
 # DANGEROUS method, use with care!
 # Usable only in this directory
@@ -309,11 +310,12 @@ def build_link_mapping(config: Config):
     link_mapping = {}
 
     for mapping in config.source_mappings:
+        mapping : Mapping
         # Skip if link transformation is disabled
-        if not mapping.get('transform_links', False):
+        if not mapping.flags.transform_links:
             continue
 
-        source_dir = ObsidianPath._root / mapping['source']
+        source_dir = ObsidianPath._root / mapping.source
 
         if not source_dir.exists():
             continue
@@ -335,7 +337,7 @@ def build_link_mapping(config: Config):
 
                 # Build output URL based on config format
                 # Remove leading underscore from collection name for URL (Jekyll convention)
-                collection_name = mapping['destination'].lstrip('_')
+                collection_name = str(mapping.destination).lstrip('_')
                 output_url = config.url_format.format(collection=collection_name, slug=output_slug_no_ext)
 
                 # Map both the original title and lowercase version
@@ -470,26 +472,27 @@ def process_mappings(link_mapping: dict, config: Config):
     total_files = 0
 
     for mapping in config.source_mappings:
-        source_dir = ObsidianPath._root / mapping['source']
+        mapping : Mapping
+        source_dir = ObsidianPath._root / mapping.source
 
         if not source_dir.exists():
-            warnings.append(f"Source directory not found: {mapping['source']}")
+            warnings.append(f"Source directory not found: {source_dir}")
             continue
 
         if not config.validate_only:
-            output_dir = OutputPath._root / mapping['destination']
+            output_dir = OutputPath._root / mapping.destination
             if not output_dir.exists():
                 if config.force_create:
-                    print(f"Creating output directory: {mapping['destination']}")
+                    print(f"Creating output directory: {output_dir}")
                     output_dir.mkdir(parents=True, exist_ok=True)
                 else:
-                    warnings.append(f"Output directory not found: {mapping['destination']}")
+                    warnings.append(f"Output directory not found: {output_dir}")
                     continue
-            print(f"\nProcessing: {mapping['source']} -> {mapping['destination']}")
+            print(f"\nProcessing: {source_dir} -> {output_dir}")
             remove_contents_of(OutputPath(output_dir))
         else:
             output_dir = None
-            print(f"\nValidating: {mapping['source']}")
+            print(f"\nValidating: {mapping.source}")
 
         source_files = get_directory_md_files(source_dir)
         print(f"Found {len(source_files)} markdown files")
@@ -550,6 +553,7 @@ def main():
         output_root=args.output_root,
         obsidian_image_dir=args.obsidian_image_dir,
         output_image_dir=args.output_image_dir,
+        source_mappings=args.mapping,
         validate_only=args.validate or None,
         force_create=args.force or None,
         fix_source=args.fix or None,

@@ -3,7 +3,6 @@
 import os
 import unicodedata
 import re
-import yaml
 import argparse
 import sys
 
@@ -11,47 +10,8 @@ from pathlib import Path
 from obsidian_md_converter.front_matter import create_front_matter, FrontMatter
 from obsidian_md_converter.paths import ObsidianPath, OutputPath
 from obsidian_md_converter.errors import ConversionError
-
-# Default config location (next to the package)
-DEFAULT_CONFIG = Path(__file__).parent.parent.resolve() / "config.yaml"
-
-def load_config(config_path: Path):
-    """Load configuration from YAML file.
-
-    Args:
-        config_path: Path to the configuration file.
-    """
-    if not config_path.exists():
-        raise FileNotFoundError(f"Configuration file not found: {config_path}")
-
-    with open(config_path, 'r', encoding='utf-8') as f:
-        config = yaml.safe_load(f)
-
-    # Resolve paths relative to config file's directory
-    config_dir = config_path.parent.resolve()
-    config['_resolved_paths'] = {
-        'obsidian_root': (config_dir / config['paths']['obsidian_root']).resolve(),
-        'output_root': (config_dir / config['paths']['output_root']).resolve(),
-        'obsidian_image_dir': None,
-        'output_image_dir': None,
-    }
-
-    # Resolve image directories
-    obsidian_root = config['_resolved_paths']['obsidian_root']
-    output_root = config['_resolved_paths']['output_root']
-    config['_resolved_paths']['obsidian_image_dir'] = obsidian_root / config['images']['source_dir']
-    config['_resolved_paths']['output_image_dir'] = output_root / config['images']['destination_dir']
-
-    # Validate obsidian root exists
-    if not obsidian_root.is_dir():
-        raise FileNotFoundError(f"Obsidian root directory not found: {obsidian_root}")
-
-    return config
-
-# Global config (will be loaded in main())
-CONFIG = None
-
-
+from obsidian_md_converter.config import Config
+from obsidian_md_converter.utils import enforce_dir
 
 # DANGEROUS method, use with care!
 # Usable only in this directory
@@ -231,6 +191,11 @@ def transform_references(filepath: OutputPath, src_dir: ObsidianPath, dest_dir: 
     md_link_pattern = re.compile(r'(!?)\[([^\]]+)\]\(([^)]+)\)')    # ![]() or []()
 
     # Use partial to pass parameters to transform functions
+    #TODO: Introduce some form of transformer that will invoke specific functions on what was matched
+    """
+    I would like to have classes like ClassicMarkdownConverter, PDFConverter.
+    Images will have to be embedded into some format I think.
+    """
     from functools import partial
     transform_md_with_params = partial(transform_md_match, src_dir=src_dir, dest_dir=dest_dir)
     content = md_link_pattern.sub(transform_md_with_params, content)
@@ -329,7 +294,7 @@ def ensure_image_available(obsidian_img_path: Path, output_img_path: Path) -> bo
     copy_file(obsidian_img_path, output_img_path)
     return True
 
-def build_link_mapping(config):
+def build_link_mapping(config: Config):
     """
     Build a mapping of note titles/filenames to their output URLs.
     This enables conversion of [[wikilinks]] to proper markdown links.
@@ -342,9 +307,8 @@ def build_link_mapping(config):
         Example: {'2PC': '/notes/2pc/', 'NPRG077': '/courses/nprg077-...'}
     """
     link_mapping = {}
-    url_format = config['links']['url_format']
 
-    for mapping in config['source_mappings']:
+    for mapping in config.source_mappings:
         # Skip if link transformation is disabled
         if not mapping.get('transform_links', False):
             continue
@@ -372,7 +336,7 @@ def build_link_mapping(config):
                 # Build output URL based on config format
                 # Remove leading underscore from collection name for URL (Jekyll convention)
                 collection_name = mapping['destination'].lstrip('_')
-                output_url = url_format.format(collection=collection_name, slug=output_slug_no_ext)
+                output_url = config.url_format.format(collection=collection_name, slug=output_slug_no_ext)
 
                 # Map both the original title and lowercase version
                 link_mapping[note_title] = output_url
@@ -426,7 +390,7 @@ def validate_images_in_content(content: str, obsidian_image_dir: ObsidianPath, s
         images_str = ", ".join(missing_images)
         raise ConversionError(source_file, f"Missing image(s): {images_str}")
 
-def process_file(source_filepath: ObsidianPath, target_directory: OutputPath, obsidian_image_dir: ObsidianPath, output_image_dir: OutputPath, link_mapping: dict, validate_only: bool, fix_source: bool = False):
+def process_file(source_filepath: ObsidianPath, target_directory: OutputPath, link_mapping: dict, config: Config):
     """
     Process or validate a single file.
 
@@ -442,21 +406,21 @@ def process_file(source_filepath: ObsidianPath, target_directory: OutputPath, ob
     # Always validate first
     validate_file_readable(source_filepath)
     content = source_filepath.read_text(encoding='utf-8')
-    validate_images_in_content(content, obsidian_image_dir, source_filepath)
+    validate_images_in_content(content, config.obsidian_image_dir, source_filepath)
 
     # Parse front matter once
-    fm = create_front_matter(content, CONFIG)
+    fm = create_front_matter(content, {'front_matter': config.front_matter_config})
 
     # Check for tabs in front matter
     if fm.fix_tabs():
-        if fix_source:
+        if config.fix_source:
             source_filepath.write_text(fm.serialize(), encoding='utf-8')
             file_warnings.append(f"{source_filepath.name}: Fixed tabs in front matter YAML")
         else:
             file_warnings.append(f"{source_filepath.name}: Tabs in front matter YAML (use --fix to resolve)")
 
     # If validate_only, we're done
-    if validate_only:
+    if config.validate_only:
         return file_warnings
 
     # Otherwise, do the full conversion
@@ -467,10 +431,10 @@ def process_file(source_filepath: ObsidianPath, target_directory: OutputPath, ob
         dst = target_directory / output_filename
 
         # Apply front matter processing
-        fm_config = CONFIG.get('front_matter', {})
-        if fm_config.get('enabled', True):
+        #TODO: Move logic to to fm.try_apply()
+        if config.front_matter_enabled:
             # Determine title from original filename (before slugification)
-            if fm_config.get('preserve_original_title', True) and original_filename:
+            if config.preserve_original_title and original_filename:
                 title = Path(original_filename).stem
             else:
                 title = Path(output_filename).stem.replace('-', ' ').title()
@@ -480,7 +444,7 @@ def process_file(source_filepath: ObsidianPath, target_directory: OutputPath, ob
         # Single write to output
         dst.write_text(fm.serialize(), encoding='utf-8')
 
-        transform_references(dst, obsidian_image_dir, output_image_dir, link_mapping=link_mapping)
+        transform_references(dst, config.obsidian_image_dir, config.output_image_dir, link_mapping=link_mapping)
     except ConversionError as e:
         if dst.exists():
             dst.unlink()
@@ -488,7 +452,7 @@ def process_file(source_filepath: ObsidianPath, target_directory: OutputPath, ob
 
     return file_warnings
 
-def process_mappings(link_mapping: dict, validate_only: bool, force_create: bool = False, fix_source: bool = False):
+def process_mappings(link_mapping: dict, config: Config):
     """
     Process all source->destination mappings.
 
@@ -505,17 +469,17 @@ def process_mappings(link_mapping: dict, validate_only: bool, force_create: bool
     warnings = []
     total_files = 0
 
-    for mapping in CONFIG['source_mappings']:
+    for mapping in config.source_mappings:
         source_dir = ObsidianPath._root / mapping['source']
 
         if not source_dir.exists():
             warnings.append(f"Source directory not found: {mapping['source']}")
             continue
 
-        if not validate_only:
+        if not config.validate_only:
             output_dir = OutputPath._root / mapping['destination']
             if not output_dir.exists():
-                if force_create:
+                if config.force_create:
                     print(f"Creating output directory: {mapping['destination']}")
                     output_dir.mkdir(parents=True, exist_ok=True)
                 else:
@@ -531,79 +495,31 @@ def process_mappings(link_mapping: dict, validate_only: bool, force_create: bool
         print(f"Found {len(source_files)} markdown files")
         total_files += len(source_files)
 
-        obsidian_image_dir = CONFIG['_resolved_paths']['obsidian_image_dir']
-        output_image_dir = CONFIG['_resolved_paths']['output_image_dir'] if not validate_only else None
-
         processed = 0
         for source_file in source_files:
             try:
                 file_warnings = process_file(
                     ObsidianPath(source_file),
                     OutputPath(output_dir) if output_dir else None,
-                    obsidian_image_dir,
-                    output_image_dir,
                     link_mapping,
-                    validate_only,
-                    fix_source
+                    config
                 )
                 warnings.extend(file_warnings)
                 processed += 1
-                if not validate_only:
+                if not config.validate_only:
                     print(f"Transferred {source_file.name}. [{processed}/{len(source_files)}]")
             except ConversionError as e:
                 errors.append(f"{source_file.name}: {e.reason}")
-                if not validate_only:
+                if not config.validate_only:
                     print(f"Transfer failed for {e.filepath}")
                     print(f"Reason: {e.reason}")
 
-        if validate_only:
+        if config.validate_only:
             print(f"Sucessfully validated {processed}/{len(source_files)} files")
 
     return (errors, warnings, total_files)
 
-def apply_cli_overrides(config: dict, obsidian_root_arg: str, output_root_arg: str,
-                        obsidian_image_dir_arg: str, output_image_dir_arg: str):
-    """
-    Apply command-line argument overrides to the configuration.
-
-    Args:
-        config: The loaded configuration dictionary
-        obsidian_root_arg: Command-line override for obsidian root
-        output_root_arg: Command-line override for output root
-        obsidian_image_dir_arg: Command-line override for obsidian image dir (relative)
-        output_image_dir_arg: Command-line override for output image dir (relative)
-    """
-    # Determine final root directories (CLI overrides or config defaults)
-    obsidian_root = Path(obsidian_root_arg).resolve() if obsidian_root_arg else config['_resolved_paths']['obsidian_root']
-    output_root = Path(output_root_arg).resolve() if output_root_arg else config['_resolved_paths']['output_root']
-
-    # Determine final image directories (CLI overrides or config defaults, relative to roots)
-    obsidian_image_subdir = obsidian_image_dir_arg if obsidian_image_dir_arg else config['images']['source_dir']
-    output_image_subdir = output_image_dir_arg if output_image_dir_arg else config['images']['destination_dir']
-
-    # Calculate final absolute paths
-    obsidian_image_dir = obsidian_root / obsidian_image_subdir
-    output_image_dir = output_root / output_image_subdir
-
-    # Update config with final resolved paths
-    config['_resolved_paths']['obsidian_root'] = obsidian_root
-    config['_resolved_paths']['output_root'] = output_root
-    config['_resolved_paths']['obsidian_image_dir'] = obsidian_image_dir
-    config['_resolved_paths']['output_image_dir'] = output_image_dir
-
-    # Print what was overridden
-    if obsidian_root_arg:
-        print(f"Using command-line obsidian root: {obsidian_root}")
-    if output_root_arg:
-        print(f"Using command-line output root: {output_root}")
-    if obsidian_image_dir_arg:
-        print(f"Using command-line obsidian image dir: {obsidian_image_dir}")
-    if output_image_dir_arg:
-        print(f"Using command-line output image dir: {output_image_dir}")
-
 def main():
-    global CONFIG
-
     # Parse command-line arguments
     parser = argparse.ArgumentParser(description='Convert Obsidian notes to standard markdown')
     parser.add_argument('--validate', action='store_true',
@@ -626,64 +542,42 @@ def main():
                         help='Provide specific mappings (format: src:dst:flag1:flag2:...). Specified flags are set.')
     args = parser.parse_args()
 
-    validate_only = args.validate
-    force_create = args.force
-    fix_source = args.fix
-    obsidian_root_arg = args.obsidian_root
-    output_root_arg = args.output_root
-    obsidian_image_dir_arg = args.obsidian_image_dir
-    output_image_dir_arg = args.output_image_dir
+    # Load configuration (YAML + CLI overrides merged in one step)
+    config_path = Path(args.config).resolve() if args.config else None
+    config = Config(
+        config_path=config_path,
+        obsidian_root=args.obsidian_root,
+        output_root=args.output_root,
+        obsidian_image_dir=args.obsidian_image_dir,
+        output_image_dir=args.output_image_dir,
+        validate_only=args.validate or None,
+        force_create=args.force or None,
+        fix_source=args.fix or None,
+    )
+    print(f"Loaded configuration from {config._config_dir}")
+
+    if not config.validate_only and config.force_create:
+        enforce_dir(config.output_root)
+        enforce_dir(config.output_image_dir)
 
     # Print header
-    if validate_only:
+    if config.validate_only:
         print("Running validation mode...")
     else:
         print("Starting the transfer process...")
 
-    # Load configuration
-    config_path = Path(args.config).resolve() if args.config else DEFAULT_CONFIG
-    print("Loading configuration...")
-    CONFIG = load_config(config_path)
-    print(f"Sucessfully loaded configuration from {config_path}")
-
-    # Apply command-line overrides
-    apply_cli_overrides(CONFIG, obsidian_root_arg, output_root_arg,
-                       obsidian_image_dir_arg, output_image_dir_arg)
-
-    # Set path roots for validation classes from config
-    ObsidianPath._root = CONFIG['_resolved_paths']['obsidian_root']
-
-    if not validate_only:
-        OutputPath._root = CONFIG['_resolved_paths']['output_root']
-
-        # Create output root directory if force flag is set
-        output_root = CONFIG['_resolved_paths']['output_root']
-        if not output_root.exists():
-            if force_create:
-                print(f"Creating output root directory: {output_root}")
-                output_root.mkdir(parents=True, exist_ok=True)
-            else:
-                raise FileNotFoundError(f"Output root directory not found: {output_root}")
-
-        # Create output image directory if force flag is set
-        output_image_dir = CONFIG['_resolved_paths']['output_image_dir']
-        if not output_image_dir.exists():
-            if force_create:
-                print(f"Creating output image directory: {output_image_dir}")
-                output_image_dir.mkdir(parents=True, exist_ok=True)
-
     # Build link mapping for all notes
     print("\nBuilding link mapping...")
-    link_mapping = build_link_mapping(CONFIG)
+    link_mapping = build_link_mapping(config)
     print(f"Built mapping for {len(link_mapping)} notes")
 
     # Process all files
-    errors, warnings, total_files = process_mappings(link_mapping, validate_only, force_create, fix_source)
+    errors, warnings, total_files = process_mappings(link_mapping, config)
 
     # Print summary
     print("\n" + "="*60)
     if len(errors) > 0:
-        print(f"{'Validation' if validate_only else 'Transfer'} FAILED")
+        print(f"{'Validation' if config.validate_only else 'Transfer'} FAILED")
         print(f"   {len(errors)} error(s):")
         for error in errors[:10]:
             print(f"   - {error}")
@@ -693,13 +587,13 @@ def main():
             print(f"   {len(warnings)} warning(s)")
         sys.exit(1)
     elif len(warnings) > 0:
-        print(f"{'Validation' if validate_only else 'Transfer'} completed with warnings")
+        print(f"{'Validation' if config.validate_only else 'Transfer'} completed with warnings")
         for warning in warnings:
             print(f"   - {warning}")
         print(f"   {total_files} files processed")
         sys.exit(0)
     else:
-        print(f"{'Validation' if validate_only else 'Transfer'} completed successfully!")
+        print(f"{'Validation' if config.validate_only else 'Transfer'} completed successfully!")
         print(f"   {total_files} files processed")
         sys.exit(0)
 

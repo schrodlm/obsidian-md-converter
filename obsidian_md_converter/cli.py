@@ -12,6 +12,7 @@ from obsidian_md_converter.paths import ObsidianPath, OutputPath
 from obsidian_md_converter.errors import ConversionError
 from obsidian_md_converter.config import Config
 from obsidian_md_converter.utils import enforce_dir
+from obsidian_md_converter.mapping import Mapping
 
 # DANGEROUS method, use with care!
 # Usable only in this directory
@@ -309,17 +310,16 @@ def build_link_mapping(config: Config):
     link_mapping = {}
 
     for mapping in config.source_mappings:
+        mapping : Mapping
         # Skip if link transformation is disabled
-        if not mapping.get('transform_links', False):
+        if not mapping.flags.transform_links:
             continue
 
-        source_dir = ObsidianPath._root / mapping['source']
-
-        if not source_dir.exists():
+        if not mapping.source.exists():
             continue
 
         # Get all markdown files
-        md_files = get_directory_md_files(source_dir)
+        md_files = get_directory_md_files(mapping.source)
 
         for md_file in md_files:
             # Get the note title (filename without extension)
@@ -335,7 +335,7 @@ def build_link_mapping(config: Config):
 
                 # Build output URL based on config format
                 # Remove leading underscore from collection name for URL (Jekyll convention)
-                collection_name = mapping['destination'].lstrip('_')
+                collection_name = mapping.destination.name.lstrip('_')
                 output_url = config.url_format.format(collection=collection_name, slug=output_slug_no_ext)
 
                 # Map both the original title and lowercase version
@@ -470,28 +470,25 @@ def process_mappings(link_mapping: dict, config: Config):
     total_files = 0
 
     for mapping in config.source_mappings:
-        source_dir = ObsidianPath._root / mapping['source']
-
-        if not source_dir.exists():
-            warnings.append(f"Source directory not found: {mapping['source']}")
+        mapping : Mapping
+        if not mapping.source.exists():
+            warnings.append(f"Source directory not found: {mapping.source}")
             continue
 
         if not config.validate_only:
-            output_dir = OutputPath._root / mapping['destination']
-            if not output_dir.exists():
+            if not mapping.destination.exists():
                 if config.force_create:
-                    print(f"Creating output directory: {mapping['destination']}")
-                    output_dir.mkdir(parents=True, exist_ok=True)
+                    print(f"Creating output directory: {mapping.destination}")
+                    mapping.destination.mkdir(parents=True, exist_ok=True)
                 else:
-                    warnings.append(f"Output directory not found: {mapping['destination']}")
+                    warnings.append(f"Output directory not found: {mapping.destination}")
                     continue
-            print(f"\nProcessing: {mapping['source']} -> {mapping['destination']}")
-            remove_contents_of(OutputPath(output_dir))
+            print(f"\nProcessing: {mapping.source} -> {mapping.destination}")
+            remove_contents_of(mapping.destination)
         else:
-            output_dir = None
-            print(f"\nValidating: {mapping['source']}")
+            print(f"\nValidating: {mapping.source}")
 
-        source_files = get_directory_md_files(source_dir)
+        source_files = get_directory_md_files(mapping.source)
         print(f"Found {len(source_files)} markdown files")
         total_files += len(source_files)
 
@@ -500,7 +497,7 @@ def process_mappings(link_mapping: dict, config: Config):
             try:
                 file_warnings = process_file(
                     ObsidianPath(source_file),
-                    OutputPath(output_dir) if output_dir else None,
+                    mapping.destination if not config.validate_only else None,
                     link_mapping,
                     config
                 )
@@ -550,6 +547,7 @@ def main():
         output_root=args.output_root,
         obsidian_image_dir=args.obsidian_image_dir,
         output_image_dir=args.output_image_dir,
+        source_mappings=args.mapping,
         validate_only=args.validate or None,
         force_create=args.force or None,
         fix_source=args.fix or None,

@@ -10,7 +10,11 @@ class BaseValidatedPath:
     _root: Path  # Must be set in child classes or via configure_root()
 
     def __init__(self, path: Union[str, Path]):
-        self._path = Path(path).expanduser().absolute()
+        p = Path(path).expanduser()
+        if p.is_absolute():
+            self._path = p
+        else:
+            self._path = (self.__class__._root / p).resolve()
         self._validate()
 
     def _validate(self):
@@ -31,6 +35,9 @@ class BaseValidatedPath:
     def path(self) -> Path:
         """Access the raw Path object when needed."""
         return self._path
+
+    def __str__(self):
+        return str(self._path)
 
     def __fspath__(self):
         """Return the file system path representation (os.PathLike protocol)."""

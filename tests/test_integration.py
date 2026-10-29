@@ -7,6 +7,7 @@ from pathlib import Path
 from obsidian_md_converter.config import Config
 from obsidian_md_converter.paths import ObsidianPath, OutputPath
 from obsidian_md_converter.cli import process_file, build_link_mapping, process_mappings
+from obsidian_md_converter.errors import ConversionError
 
 
 @pytest.fixture
@@ -98,6 +99,17 @@ class TestProcessFilePipeline:
         content = (target.path / "hello-world.md").read_text()
         assert content.startswith("---\n")
         assert "---\n" in content[4:]  # closing delimiter
+
+    def test_invalid_front_matter_fails_the_note_and_writes_nothing(self, vault):
+        config, obsidian, output = vault
+        broken = obsidian / "notes" / "Broken.md"
+        broken.write_text("---\ntags:\n      - a\n  - b\n---\nBody\n")
+        target = OutputPath(output / "_notes")
+
+        with pytest.raises(ConversionError, match="Invalid front matter YAML"):
+            process_file(ObsidianPath(broken), target, link_mapping={}, config=config)
+
+        assert not (target.path / "broken.md").exists()
 
 
 class TestBuildLinkMapping:

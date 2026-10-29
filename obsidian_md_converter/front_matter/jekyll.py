@@ -33,6 +33,16 @@ class JekyllFrontMatter(FrontMatter):
         if not self._body.startswith('\n'):
             self._body = '\n' + self._body
 
+    def ensure(self, title: str):
+        """Ensure front matter has a title and, when auto_add is enabled, a layout.
+
+        A page whose front matter names no layout renders without the site's template.
+        """
+        super().ensure(title)
+        if self._has_front_matter and 'layout' not in self._metadata and self._config.get('auto_add', False):
+            self._raw_front_matter += f'\nlayout: {self._default_layout}'
+            self._metadata['layout'] = self._default_layout
+
     def apply_slug_transform(self, slug: str) -> str:
         """Apply Jekyll post naming convention.
 

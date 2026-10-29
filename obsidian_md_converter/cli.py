@@ -5,6 +5,7 @@ import unicodedata
 import re
 import argparse
 import sys
+import urllib.parse
 
 from dataclasses import dataclass
 from pathlib import Path
@@ -103,46 +104,32 @@ def transform_md_match(match: re.Match, src_dir: Path = None, dest_dir: Path = N
     Transforms standard Markdown links and images - ![]() or []() - processing images for output directory.
 
     Handles the following cases:
-    - Image references (![alt](path)): 
-        * Copies images to destination directory
-        * Updates paths to be relative to destination
-        * Returns alt text if image unavailable
-    - External links [](): Leaves unchanged
-    - Document links [](): Leaves unchanged (per project requirements)
+    - Image references (![alt](path)): the path is URL-decoded and resolved in the vault's
+      image directory, the image is copied, and the reference points at its site-absolute URL
+    - External links and images: Leaves unchanged
+    - Document links [](): Leaves unchanged
 
     Returns:
         Transformed markdown string or original string if no transformation needed
 
     Examples:
-        # Local image transformation
-        Input:  ![logo](images/logo.png)
-        Output: ![logo]($(dst_dir)/images/logo.png)
+        Input:  ![Figure 1](splay%20results.png)
+        Output: ![Figure 1](/assets/img/splay%20results.png)
 
-        # External image (unchanged)
         Input:  ![logo](https://example.com/logo.png)
         Output: ![logo](https://example.com/logo.png)
-
-        # Document link (unchanged per current requirements)
-        Input:  [Readme](README.md)
-        Output: [Readme](README.md)
-
-        # Missing image returns alt text
-        Input:  ![missing](nonexistent.png)
-        Output: missing
     """
     is_image = match.group(1) == '!'
     alt_text = match.group(2)
     url = match.group(3)
     
     if is_image and not url.startswith(('http://', 'https://')):
-        img_path = Path(url)
+        img_path = Path(urllib.parse.unquote(url))
         src_path = src_dir / img_path
         dst_path = dest_dir / img_path
-        
-        if ensure_image_available(src_path, dst_path):
-            rel_path = dst_path.relative_to(dest_dir)
-            return f"![{alt_text}]({rel_path})"
-        return alt_text
+
+        ensure_image_available(src_path, dst_path)
+        return f"![{alt_text}]({output_image_url(dst_path, OutputPath._root)})"
     return match.group(0)  # Leave external links and doc links unchanged
 
 def transform_obsidian_match(match, src_dir: Path = None, dest_dir: Path = None, links: NoteLinks = None):
@@ -314,7 +301,7 @@ def transform_image_ref(full_ref: str, new_parent_dir: OutputPath, root: OutputP
             alt_text = part
     
     # Build the image tag - 
-    img_tag = f"![{alt_text}](/{(new_parent_dir/relative_img_path).relative_to(root)})"
+    img_tag = f"![{alt_text}]({output_image_url(new_parent_dir / relative_img_path, root)})"
 
     # Add dimensions if specified
     if width and height:
@@ -324,6 +311,10 @@ def transform_image_ref(full_ref: str, new_parent_dir: OutputPath, root: OutputP
     
     return img_tag, relative_img_path
     
+
+def output_image_url(output_path: OutputPath, root: OutputPath) -> str:
+    """The site-absolute URL of a copied image, percent-encoded so names with spaces stay one link target."""
+    return '/' + urllib.parse.quote(str(Path(output_path).relative_to(root)))
 
 def copy_file(src: Path, dst: Path):
     # TODO: Src should always be in obsidian root while dst should always be in output path
@@ -426,7 +417,7 @@ def validate_images_in_content(content: str, obsidian_image_dir: ObsidianPath, s
         img_path_str = match.group(2)
         # Only validate local images (not URLs)
         if not (img_path_str.startswith('http://') or img_path_str.startswith('https://')):
-            img_path = obsidian_image_dir / img_path_str
+            img_path = obsidian_image_dir / urllib.parse.unquote(img_path_str)
             if not img_path.exists():
                 missing_images.append(img_path_str)
 

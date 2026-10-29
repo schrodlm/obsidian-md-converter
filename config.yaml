@@ -24,11 +24,8 @@ links:
   # Available variables: {collection}, {slug}
   url_format: "/{collection}/{slug}.html"
 
-  # If a link target is not found in the mapping:
-  # - "text": Extract display text only (backward compatible)
-  # - "keep": Keep original [[link]] format
-  # - "warn": Extract text but log warning
-  fallback_mode: "text"
+  # A link to a note that is not published (not written yet, or outside every
+  # mapping) becomes its plain display text.
 
 # Front matter settings
 front_matter:

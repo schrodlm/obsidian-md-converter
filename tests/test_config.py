@@ -55,7 +55,6 @@ source_mappings:
     copy_images: false
 links:
   url_format: "/{{collection}}/{{slug}}/"
-  fallback_mode: "warn"
 front_matter:
   enabled: true
   type: "jekyll"
@@ -128,11 +127,9 @@ class TestCLIOverrides:
         """CLI override wins over YAML for optional fields."""
         config = Config(
             config_path=full_yaml,
-            fallback_mode="keep",
             url_format="/custom/{slug}/",
         )
-        # YAML has "warn" and "/{collection}/{slug}/" but CLI should win
-        assert config.fallback_mode == "keep"
+        # YAML has "/{collection}/{slug}/" but CLI should win
         assert config.url_format == "/custom/{slug}/"
 
     def test_cli_overrides_yaml_paths(self, minimal_yaml, tmp_path):
@@ -291,7 +288,6 @@ class TestDefaults:
     def test_default_values(self, minimal_yaml):
         config = Config(config_path=minimal_yaml)
         assert config.url_format == "/{collection}/{slug}.html"
-        assert config.fallback_mode == "text"
         assert config.front_matter_enabled is True
         assert config.preserve_original_title is False
         assert config.validate_only is False
@@ -301,7 +297,6 @@ class TestDefaults:
 
     def test_yaml_overrides_defaults(self, full_yaml):
         config = Config(config_path=full_yaml)
-        assert config.fallback_mode == "warn"
         assert config.preserve_original_title is True
         assert config.validate_only is True
         assert config.force_create is True
@@ -329,22 +324,6 @@ images:
   destination_dir: "assets/images"
 """)
         with pytest.raises(ConfigError, match="must not be the same"):
-            Config(config_path=cfg)
-
-    def test_invalid_fallback_mode_raises(self, tmp_path, tmp_dirs):
-        obsidian, output = tmp_dirs
-        cfg = tmp_path / "config.yaml"
-        cfg.write_text(f"""\
-paths:
-  obsidian_root: "{obsidian}"
-  output_root: "{output}"
-images:
-  source_dir: "assets/images"
-  destination_dir: "assets/img"
-links:
-  fallback_mode: "invalid_mode"
-""")
-        with pytest.raises(ConfigError, match="Invalid fallback_mode"):
             Config(config_path=cfg)
 
     def test_preserve_title_without_front_matter_raises(self, tmp_path, tmp_dirs):

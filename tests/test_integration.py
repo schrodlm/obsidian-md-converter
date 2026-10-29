@@ -123,8 +123,8 @@ class TestBuildLinkMapping:
         assert "Hello World" in mapping
         assert "Second Note" in mapping
         # URL format applied
-        assert mapping["Hello World"].endswith(".html")
-        assert "/notes/" in mapping["Hello World"]
+        assert mapping["Hello World"].url.endswith(".html")
+        assert "/notes/" in mapping["Hello World"].url
 
 class TestProcessMappings:
     """A run whose mapped folders are missing fails instead of converting nothing."""

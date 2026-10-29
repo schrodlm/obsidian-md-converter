@@ -6,6 +6,7 @@ import re
 import argparse
 import sys
 
+from dataclasses import dataclass
 from pathlib import Path
 from obsidian_md_converter.front_matter import create_front_matter, FrontMatter
 from obsidian_md_converter.paths import ObsidianPath, OutputPath
@@ -13,6 +14,23 @@ from obsidian_md_converter.errors import ConversionError
 from obsidian_md_converter.config import Config
 from obsidian_md_converter.utils import enforce_dir
 from obsidian_md_converter.mapping import Mapping
+from obsidian_md_converter.headings import HeadingAnchors
+
+
+@dataclass
+class LinkTarget:
+    """Where a note is published, and the anchors its headings get there."""
+    url: str
+    anchors: HeadingAnchors
+
+
+@dataclass
+class NoteLinks:
+    """What rewriting one note's links needs: every published note, the note's own headings, and where to report problems."""
+    link_mapping: dict[str, LinkTarget]
+    own_anchors: HeadingAnchors
+    source_name: str
+    warnings: list[str]
 
 # DANGEROUS method, use with care!
 # Usable only in this directory
@@ -127,7 +145,7 @@ def transform_md_match(match: re.Match, src_dir: Path = None, dest_dir: Path = N
         return alt_text
     return match.group(0)  # Leave external links and doc links unchanged
 
-def transform_obsidian_match(match, src_dir: Path = None, dest_dir: Path = None, link_mapping: dict = None):
+def transform_obsidian_match(match, src_dir: Path = None, dest_dir: Path = None, links: NoteLinks = None):
     """
     Transforms Obsidian-style links ([[ ]]) into standard markdown format.
 
@@ -135,7 +153,7 @@ def transform_obsidian_match(match, src_dir: Path = None, dest_dir: Path = None,
         match: re.Match object from Obsidian link pattern
         src_dir: Source directory for images (from config)
         dest_dir: Destination directory for images (from config)
-        link_mapping: Optional dict mapping note titles to output URLs
+        links: The published notes and the current note's headings, for document links
 
     Returns:
         Transformed markdown string or display text
@@ -166,15 +184,15 @@ def transform_obsidian_match(match, src_dir: Path = None, dest_dir: Path = None,
         )
         return new_content
     else:
-        return transform_md_ref(full_ref, link_mapping) #transform document links using mapping
+        return transform_md_ref(full_ref, links)
     
-def transform_references(filepath: OutputPath, src_dir: ObsidianPath, dest_dir: OutputPath, link_mapping: dict = None):
+def transform_references(filepath: OutputPath, src_dir: ObsidianPath, dest_dir: OutputPath, links: NoteLinks = None):
     """
     Transform Obsidian-style references to standard markdown format.
     Handles both document links and image references.
 
-    Document links are converted to standard markdown links using the provided link_mapping.
-    If no mapping is provided, falls back to extracting display text only.
+    Document links are converted to standard markdown links to the published notes in links.
+    A link to a note that is not published becomes its display text.
 
     Image references are transferred from their source to the output image directory (from config)
         Image reference can be in form:
@@ -201,41 +219,66 @@ def transform_references(filepath: OutputPath, src_dir: ObsidianPath, dest_dir: 
     transform_md_with_params = partial(transform_md_match, src_dir=src_dir, dest_dir=dest_dir)
     content = md_link_pattern.sub(transform_md_with_params, content)
 
-    transform_obsidian_with_params = partial(transform_obsidian_match, src_dir=src_dir, dest_dir=dest_dir, link_mapping=link_mapping)
+    transform_obsidian_with_params = partial(transform_obsidian_match, src_dir=src_dir, dest_dir=dest_dir, links=links)
     content = obsidian_link_pattern.sub(transform_obsidian_with_params, content)
 
     filepath.write_text(content, encoding='utf-8')
 
-def transform_md_ref(full_ref: str, link_mapping: dict = None) -> str:
+def transform_md_ref(full_ref: str, links: NoteLinks = None) -> str:
     """
-    Transform Obsidian document links to standard markdown links.
+    Transform an Obsidian document link to a standard markdown link.
 
     Args:
         full_ref: The content inside [[...]]
-        link_mapping: Optional dict mapping note titles to output URLs
+        links: The published notes and the current note's headings
 
     Returns:
-        Markdown link if mapping found, otherwise display text or empty string
+        Markdown link if the note is published, otherwise the display text.
+        A link to a heading the note does not have points at the page and is reported.
 
     Examples:
-        [[2PC]] with mapping -> [2PC](/notes/2pc/)
-        [[2PC|Two Phase Commit]] with mapping -> [Two Phase Commit](/notes/2pc/)
-        [[Unknown Note]] without mapping -> Unknown Note (display text only)
+        [[2PC]] -> [2PC](/notes/2pc.html)
+        [[2PC|Two Phase Commit]] -> [Two Phase Commit](/notes/2pc.html)
+        [[tmux#Prefix key]] -> [tmux > Prefix key](/notes/tmux.html#prefix-key)
+        [[#Prefix key]] -> [Prefix key](#prefix-key)
+        [[Unknown Note]] -> Unknown Note
     """
     parts = [part.strip() for part in full_ref.split('|')]
-    note_title = parts[0]  # The actual note reference
-    display_text = parts[1] if len(parts) > 1 else note_title  # Display text or title
+    note_title, _, subpath = parts[0].partition('#')
+    note_title = note_title.strip()
+    # A nested subpath (#H1#H2) names its innermost heading last.
+    heading = subpath.split('#')[-1].strip()
 
-    # If we have a link mapping, try to convert to output link
-    if link_mapping:
-        # Try exact match first, then lowercase
-        output_url = link_mapping.get(note_title) or link_mapping.get(note_title.lower())
+    if len(parts) > 1:
+        display_text = parts[1]
+    elif note_title and heading:
+        display_text = f"{note_title} > {heading}"
+    else:
+        display_text = note_title or heading
 
-        if output_url:
-            return f"[{display_text}]({output_url})"
+    if links is None:
+        return display_text
 
-    # If no mapping found, return just the display text (backward compatible)
-    return display_text
+    if not note_title:
+        anchor = links.own_anchors.anchor_for(heading) if heading else None
+        if anchor is None:
+            links.warnings.append(f"{links.source_name}: [[{full_ref}]] names heading '{heading}', which this note does not have")
+            return display_text
+        return f"[{display_text}](#{anchor})"
+
+    target = links.link_mapping.get(note_title) or links.link_mapping.get(note_title.lower())
+    if target is None:
+        return display_text
+    if not heading:
+        return f"[{display_text}]({target.url})"
+
+    anchor = target.anchors.anchor_for(heading)
+    if anchor is None:
+        links.warnings.append(
+            f"{links.source_name}: [[{full_ref}]] names heading '{heading}', which '{note_title}' does not have; linking to the page"
+        )
+        return f"[{display_text}]({target.url})"
+    return f"[{display_text}]({target.url}#{anchor})"
 
 def transform_image_ref(full_ref: str, new_parent_dir: OutputPath, root: OutputPath) -> str:
     """
@@ -295,17 +338,17 @@ def ensure_image_available(obsidian_img_path: Path, output_img_path: Path) -> bo
     copy_file(obsidian_img_path, output_img_path)
     return True
 
-def build_link_mapping(config: Config):
+def build_link_mapping(config: Config) -> dict[str, LinkTarget]:
     """
-    Build a mapping of note titles/filenames to their output URLs.
+    Build a mapping of note titles/filenames to where they are published.
     This enables conversion of [[wikilinks]] to proper markdown links.
 
     Args:
         config: Configuration dictionary from YAML
 
     Returns:
-        Dictionary mapping note title (without extension) to output URL
-        Example: {'2PC': '/notes/2pc/', 'NPRG077': '/courses/nprg077-...'}
+        Dictionary mapping note title (without extension) to its output URL and heading anchors
+        Example: {'2PC': LinkTarget(url='/notes/2pc.html', anchors=...)}
     """
     link_mapping = {}
 
@@ -339,8 +382,9 @@ def build_link_mapping(config: Config):
                 output_url = config.url_format.format(collection=collection_name, slug=output_slug_no_ext)
 
                 # Map both the original title and lowercase version
-                link_mapping[note_title] = output_url
-                link_mapping[note_title.lower()] = output_url
+                target = LinkTarget(url=output_url, anchors=HeadingAnchors(fm.body))
+                link_mapping[note_title] = target
+                link_mapping[note_title.lower()] = target
             except ConversionError:
                 # Skip files that can't be slugified
                 continue
@@ -390,7 +434,7 @@ def validate_images_in_content(content: str, obsidian_image_dir: ObsidianPath, s
         images_str = ", ".join(missing_images)
         raise ConversionError(source_file, f"Missing image(s): {images_str}")
 
-def process_file(source_filepath: ObsidianPath, target_directory: OutputPath, link_mapping: dict, config: Config):
+def process_file(source_filepath: ObsidianPath, target_directory: OutputPath, link_mapping: dict[str, LinkTarget], config: Config):
     """
     Process or validate a single file.
 
@@ -447,7 +491,13 @@ def process_file(source_filepath: ObsidianPath, target_directory: OutputPath, li
         # Single write to output
         dst.write_text(fm.serialize(), encoding='utf-8')
 
-        transform_references(dst, config.obsidian_image_dir, config.output_image_dir, link_mapping=link_mapping)
+        links = NoteLinks(
+            link_mapping=link_mapping,
+            own_anchors=HeadingAnchors(fm.body),
+            source_name=source_filepath.name,
+            warnings=file_warnings,
+        )
+        transform_references(dst, config.obsidian_image_dir, config.output_image_dir, links=links)
     except ConversionError as e:
         if dst.exists():
             dst.unlink()
@@ -455,7 +505,7 @@ def process_file(source_filepath: ObsidianPath, target_directory: OutputPath, li
 
     return file_warnings
 
-def process_mappings(link_mapping: dict, config: Config):
+def process_mappings(link_mapping: dict[str, LinkTarget], config: Config):
     """
     Process all source->destination mappings.
 

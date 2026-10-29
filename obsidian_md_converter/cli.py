@@ -472,6 +472,11 @@ def process_mappings(link_mapping: dict, config: Config):
     warnings = []
     total_files = 0
 
+    # Images are rebuilt each run like pages, so an image no published note references leaves the site.
+    if not config.validate_only and config.output_image_dir.exists():
+        print(f"\nClearing images: {config.output_image_dir}")
+        remove_contents_of(config.output_image_dir)
+
     for mapping in config.source_mappings:
         mapping : Mapping
         if not mapping.source.exists():

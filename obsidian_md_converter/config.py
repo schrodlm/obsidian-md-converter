@@ -44,16 +44,8 @@ class Config:
 
     def _parse(self):
         # --- Paths (required — from YAML or CLI) ---
-        self.obsidian_root = self._resolve_config_path(self._resolve_required(
-            self._overrides.get('obsidian_root'),
-            nested_get(self._raw_config,'paths', 'obsidian_root'),
-            name='obsidian_root',
-        ))
-        self.output_root = self._resolve_config_path(self._resolve_required(
-            self._overrides.get('output_root'),
-            nested_get(self._raw_config,'paths', 'output_root'),
-            name='output_root',
-        ))
+        self.obsidian_root = self._resolve_root('obsidian_root')
+        self.output_root = self._resolve_root('output_root')
 
         # Set roots for validated path classes
         ObsidianPath.configure_root(self.obsidian_root)
@@ -158,12 +150,23 @@ class Config:
 
     # --- Helpers ---
 
+    def _resolve_root(self, name: str) -> Path:
+        """Resolve a root directory: a CLI value is relative to the working directory, a YAML value to the config file."""
+        override = self._overrides.get(name)
+        if override is not None:
+            return self._resolve_path(override, base=Path.cwd())
+        raw = self._resolve_required(nested_get(self._raw_config, 'paths', name), name=name)
+        return self._resolve_config_path(raw)
+
     def _resolve_config_path(self, raw: str) -> Path:
         """Resolve a path — expand ~, absolute stays absolute, relative resolves against config dir."""
+        return self._resolve_path(raw, base=self._config_dir)
+
+    def _resolve_path(self, raw: str, base: Path) -> Path:
         p = Path(raw).expanduser()
         if p.is_absolute():
             return p.resolve()
-        return (self._config_dir / p).resolve()
+        return (base / p).resolve()
 
     def _resolve(self, *values, default=None):
         """Return first non-None value, or default."""

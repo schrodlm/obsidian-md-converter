@@ -53,7 +53,6 @@ source_mappings:
     copy_images: true
 links:
   url_format: "/{{collection}}/{{slug}}.html"
-  fallback_mode: "text"
 front_matter:
   enabled: true
   type: "base"

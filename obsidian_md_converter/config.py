@@ -9,8 +9,6 @@ from obsidian_md_converter.mapping import Mapping
 # Default config location (next to the package)
 DEFAULT_CONFIG_PATH = Path(__file__).parent.parent.resolve() / "config.yaml"
 
-VALID_FALLBACK_MODES = {"text", "keep", "warn"}
-
 
 class Config:
     def __init__(self, config_path: Path | None = None, **overrides):
@@ -85,11 +83,6 @@ class Config:
             nested_get(self._raw_config,'links', 'url_format'),
             default="/{collection}/{slug}.html",
         )
-        self.fallback_mode = self._resolve(
-            self._overrides.get('fallback_mode'),
-            nested_get(self._raw_config,'links', 'fallback_mode'),
-            default="text",
-        )
 
         # --- Front matter ---
         #TODO: Introduce FrontMatterConfig class
@@ -134,12 +127,6 @@ class Config:
             raise ConfigError(
                 "'obsidian_root' and 'output_root' must not be the same directory. "
                 "This would overwrite your Obsidian vault."
-            )
-
-        if self.fallback_mode not in VALID_FALLBACK_MODES:
-            raise ConfigError(
-                f"Invalid fallback_mode: '{self.fallback_mode}'. "
-                f"Must be one of: {', '.join(sorted(VALID_FALLBACK_MODES))}"
             )
 
         if not self.front_matter_enabled and self.preserve_original_title:

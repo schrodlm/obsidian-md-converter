@@ -1,11 +1,12 @@
 """Integration tests — exercise the real pipeline end-to-end (no mocks)."""
 
 import pytest
+import shutil
 from pathlib import Path
 
 from obsidian_md_converter.config import Config
 from obsidian_md_converter.paths import ObsidianPath, OutputPath
-from obsidian_md_converter.cli import process_file, build_link_mapping
+from obsidian_md_converter.cli import process_file, build_link_mapping, process_mappings
 
 
 @pytest.fixture
@@ -112,3 +113,23 @@ class TestBuildLinkMapping:
         # URL format applied
         assert mapping["Hello World"].endswith(".html")
         assert "/notes/" in mapping["Hello World"]
+
+class TestProcessMappings:
+    """A run whose mapped folders are missing fails instead of converting nothing."""
+
+    def test_missing_source_directory_is_an_error(self, vault):
+        config, obsidian, output = vault
+        shutil.rmtree(obsidian / "notes")
+
+        errors, warnings, total_files = process_mappings(link_mapping={}, config=config)
+
+        assert any("Source directory not found" in e for e in errors)
+        assert total_files == 0
+
+    def test_missing_output_directory_without_force_is_an_error(self, vault):
+        config, obsidian, output = vault
+        shutil.rmtree(output / "_notes")
+
+        errors, warnings, total_files = process_mappings(link_mapping={}, config=config)
+
+        assert any("Output directory not found" in e for e in errors)

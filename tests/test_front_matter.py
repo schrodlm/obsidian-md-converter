@@ -52,3 +52,28 @@ class TestJekyllPostSlug:
     def test_non_post_slug_is_unchanged(self):
         fm = JekyllFrontMatter('---\nlayout: note\ndate: 2024-12-20\n---\n')
         assert fm.apply_slug_transform("note.md") == "note.md"
+
+
+class TestJekyllEnsure:
+    AUTO_ADD = {'jekyll': {'auto_add': True, 'default_layout': 'note'}}
+
+    def test_front_matter_without_layout_gets_the_default_layout(self):
+        fm = JekyllFrontMatter('---\ntags:\n  - mff\n---\nBody\n', self.AUTO_ADD)
+        fm.ensure("CAP theorem")
+        assert fm.get("layout") == "note"
+        assert fm.serialize() == '---\ntags:\n  - mff\ntitle: "CAP theorem"\nlayout: note\n---\nBody\n'
+
+    def test_existing_layout_is_kept(self):
+        fm = JekyllFrontMatter('---\nlayout: course\n---\nBody\n', self.AUTO_ADD)
+        fm.ensure("NPRG077")
+        assert fm.get("layout") == "course"
+
+    def test_note_without_front_matter_gets_layout_and_title(self):
+        fm = JekyllFrontMatter('Body\n', self.AUTO_ADD)
+        fm.ensure("2PC")
+        assert fm.metadata == {"layout": "note", "title": "2PC"}
+
+    def test_layout_is_not_added_without_auto_add(self):
+        fm = JekyllFrontMatter('---\ntags: []\n---\nBody\n', {'jekyll': {'auto_add': False}})
+        fm.ensure("x")
+        assert fm.get("layout") is None

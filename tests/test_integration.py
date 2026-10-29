@@ -214,3 +214,25 @@ class TestLinks:
         content, warnings = self.convert(vault, "See [[Not Written Yet|later]] and [[Not Written Yet#Part]].\n")
         assert "See later and Not Written Yet > Part." in content
         assert warnings == []
+
+
+class TestObsidianSyntaxPassesThrough:
+    """Obsidian syntax the site renders itself reaches the output exactly as written."""
+
+    def test_callouts_keep_their_marker_title_and_body(self, vault):
+        config, obsidian, output = vault
+        source = obsidian / "notes" / "Hello World.md"
+        source.write_text(
+            "> [!note] Pozor\n"
+            "> - not self-balancing, see [[Second Note]]\n"
+            "\n"
+            "> [!important]\n"
+            "> untitled\n"
+        )
+        target = OutputPath(output / "_notes")
+
+        process_file(ObsidianPath(source), target, build_link_mapping(config), config)
+
+        content = (target.path / "hello-world.md").read_text()
+        assert "> [!note] Pozor\n> - not self-balancing, see [Second Note](/notes/second-note.html)\n" in content
+        assert "> [!important]\n> untitled\n" in content

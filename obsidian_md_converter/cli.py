@@ -472,7 +472,7 @@ def process_mappings(link_mapping: dict, config: Config):
     for mapping in config.source_mappings:
         mapping : Mapping
         if not mapping.source.exists():
-            warnings.append(f"Source directory not found: {mapping.source}")
+            errors.append(f"Source directory not found: {mapping.source}")
             continue
 
         if not config.validate_only:
@@ -481,7 +481,7 @@ def process_mappings(link_mapping: dict, config: Config):
                     print(f"Creating output directory: {mapping.destination}")
                     mapping.destination.mkdir(parents=True, exist_ok=True)
                 else:
-                    warnings.append(f"Output directory not found: {mapping.destination}")
+                    errors.append(f"Output directory not found: {mapping.destination} (use --force to create it)")
                     continue
             print(f"\nProcessing: {mapping.source} -> {mapping.destination}")
             remove_contents_of(mapping.destination)

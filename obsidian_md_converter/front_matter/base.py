@@ -1,4 +1,5 @@
 import re
+import yaml
 
 
 class FrontMatter:
@@ -20,6 +21,7 @@ class FrontMatter:
         self._body: str = content
         self._has_front_matter: bool = False
         self._metadata: dict = {}
+        self._yaml_error: str | None = None
         self._parse(content)
 
     def _parse(self, content: str):
@@ -37,12 +39,27 @@ class FrontMatter:
 
     def _parse_metadata(self):
         self._metadata = {}
-        for line in self._raw_front_matter.splitlines():
-            line = line.strip()
-            if not line or ':' not in line:
-                continue
-            key, value = line.split(':', 1)
-            self._metadata[key.strip()] = value.strip()
+        self._yaml_error = None
+        try:
+            parsed = yaml.safe_load(self._raw_front_matter)
+        except yaml.YAMLError as e:
+            self._yaml_error = self._describe_yaml_error(e)
+            return
+        if parsed is None:
+            return
+        if not isinstance(parsed, dict):
+            self._yaml_error = "front matter is not a list of 'key: value' fields"
+            return
+        self._metadata = parsed
+
+    @staticmethod
+    def _describe_yaml_error(error: yaml.YAMLError) -> str:
+        problem = getattr(error, 'problem', None) or str(error)
+        mark = getattr(error, 'problem_mark', None)
+        if mark is None:
+            return problem
+        # The mark counts from the first front matter line; the file has the opening '---' above it.
+        return f"{problem} (line {mark.line + 2})"
 
     def apply_slug_transform(self, slug: str) -> str:
         return slug
@@ -50,6 +67,11 @@ class FrontMatter:
     @property
     def has_front_matter(self) -> bool:
         return self._has_front_matter
+
+    @property
+    def yaml_error(self) -> str | None:
+        """Why the front matter is not valid YAML, or None when it is (or there is none)."""
+        return self._yaml_error
 
     @property
     def metadata(self) -> dict:

@@ -1,3 +1,5 @@
+import datetime
+
 from .base import FrontMatter
 from obsidian_md_converter.utils import parse_date
 
@@ -41,11 +43,15 @@ class JekyllFrontMatter(FrontMatter):
         if self._metadata.get("layout") != "post":
             return slug
 
-        date_str = self._metadata.get("date")
-        if not date_str:
+        date_value = self._metadata.get("date")
+        if not date_value:
             raise ValueError("Missing 'date' field for post layout")
 
-        parsed_date = parse_date(date_str)
+        # YAML reads an ISO date as a date object; other formats arrive as text.
+        if isinstance(date_value, datetime.date):
+            parsed_date = date_value
+        else:
+            parsed_date = parse_date(str(date_value))
         if parsed_date is None:
             raise ValueError("Invalid date format in front matter for post layout")
 

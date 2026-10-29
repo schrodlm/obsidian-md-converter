@@ -145,3 +145,25 @@ class TestProcessMappings:
         errors, warnings, total_files = process_mappings(link_mapping={}, config=config)
 
         assert any("Output directory not found" in e for e in errors)
+
+    def test_images_no_note_references_are_removed_from_the_output(self, vault):
+        config, obsidian, output = vault
+        (obsidian / "notes" / "Hello World.md").write_text("Logo: ![[logo.png]]\n")
+        stale = output / "assets" / "img" / "stale.png"
+        stale.write_bytes(b"\x89PNG stale")
+
+        errors, warnings, total_files = process_mappings(link_mapping={}, config=config)
+
+        assert errors == []
+        assert not stale.exists()
+        assert (output / "assets" / "img" / "logo.png").exists()
+
+    def test_validation_leaves_output_images_alone(self, vault):
+        config, obsidian, output = vault
+        stale = output / "assets" / "img" / "stale.png"
+        stale.write_bytes(b"\x89PNG stale")
+        config.validate_only = True
+
+        process_mappings(link_mapping={}, config=config)
+
+        assert stale.exists()

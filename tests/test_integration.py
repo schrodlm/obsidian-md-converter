@@ -236,3 +236,29 @@ class TestObsidianSyntaxPassesThrough:
         content = (target.path / "hello-world.md").read_text()
         assert "> [!note] Pozor\n> - not self-balancing, see [Second Note](/notes/second-note.html)\n" in content
         assert "> [!important]\n> untitled\n" in content
+
+
+class TestImages:
+    """Every image reference points at the copied image by its site-absolute, percent-encoded URL."""
+
+    def convert(self, vault, body):
+        config, obsidian, output = vault
+        (obsidian / "assets" / "images" / "splay results.png").write_bytes(b"\x89PNG fake")
+        source = obsidian / "notes" / "Hello World.md"
+        source.write_text(body)
+        target = OutputPath(output / "_notes")
+        process_file(ObsidianPath(source), target, link_mapping={}, config=config)
+        return (target.path / "hello-world.md").read_text(), output
+
+    def test_markdown_image_with_encoded_name_is_copied_and_linked_absolutely(self, vault):
+        content, output = self.convert(vault, "![Figure 1](splay%20results.png)\n")
+        assert "![Figure 1](/assets/img/splay%20results.png)" in content
+        assert (output / "assets" / "img" / "splay results.png").exists()
+
+    def test_wikilink_image_name_with_spaces_is_percent_encoded(self, vault):
+        content, _ = self.convert(vault, "![[splay results.png|300]]\n")
+        assert '![Image](/assets/img/splay%20results.png){:width="300"}' in content
+
+    def test_external_image_is_unchanged(self, vault):
+        content, _ = self.convert(vault, "![logo](https://example.com/logo.png)\n")
+        assert "![logo](https://example.com/logo.png)" in content

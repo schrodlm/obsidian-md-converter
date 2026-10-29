@@ -252,6 +252,28 @@ images:
         assert config.obsidian_root == (tmp_path / "vault").resolve()
         assert config.output_root == (tmp_path / "output").resolve()
 
+    def test_relative_cli_roots_resolve_against_working_directory(self, tmp_path, monkeypatch):
+        """A relative root given on the CLI is relative to where the command runs, not to the config file."""
+        workdir = tmp_path / "checkout"
+        vault = workdir / "vault"
+        site = workdir / "site"
+        (vault / "assets" / "images").mkdir(parents=True)
+        (site / "assets" / "img").mkdir(parents=True)
+
+        cfg = vault / "converter.yaml"
+        cfg.write_text("""\
+paths:
+  obsidian_root: "."
+  output_root: "/unused"
+images:
+  source_dir: "assets/images"
+  destination_dir: "assets/img"
+""")
+        monkeypatch.chdir(workdir)
+        config = Config(config_path=cfg, obsidian_root="vault", output_root="site")
+        assert config.obsidian_root == vault.resolve()
+        assert config.output_root == site.resolve()
+
     def test_tilde_expansion(self, minimal_yaml, tmp_path):
         """Ensure ~ in paths gets expanded (doesn't crash)."""
         # We can't easily test ~ resolves to home, but we can ensure

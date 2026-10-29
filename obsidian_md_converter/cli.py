@@ -419,6 +419,9 @@ def process_file(source_filepath: ObsidianPath, target_directory: OutputPath, li
         else:
             file_warnings.append(f"{source_filepath.name}: Tabs in front matter YAML (use --fix to resolve)")
 
+    if fm.yaml_error:
+        raise ConversionError(source_filepath, f"Invalid front matter YAML: {fm.yaml_error}")
+
     # If validate_only, we're done
     if config.validate_only:
         return file_warnings

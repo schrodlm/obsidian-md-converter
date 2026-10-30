@@ -48,13 +48,15 @@ def get_directory_md_files(directory: Path) -> list[Path]:
     """The markdown files a mapping publishes: every one under its source directory, subdirectories included."""
     return list(directory.rglob("*.md"))
 
-def slugify(filepath: ObsidianPath, fm: FrontMatter):
+def slugify(filepath: ObsidianPath) -> str:
     """
-    Transform a filename into a URL-safe slug.
+    Transform a filename into its neutral, URL-safe output name.
+
+    The name is the same for every site generator; a generator's own naming
+    convention (such as Jekyll's dated post filenames) is applied when the file is written.
 
     Args:
         filepath: ObsidianPath object pointing to the file to convert
-        metadata: Pre-parsed front matter metadata dict.
 
     Returns:
         A sanitized filename with:
@@ -62,22 +64,12 @@ def slugify(filepath: ObsidianPath, fm: FrontMatter):
         - No special characters or punctuation
         - Spaces converted to hyphens
         - Multiple hyphens collapsed
-        - Leading/trailing hyphens removed
 
     Example:
         "Hello World!.md" -> "hello-world.md"
     """
 
-    slug = slugify_text(Path(filepath).stem) + Path(filepath).suffix.strip().lower()
-
-    # Apply front matter specific slug transformations (e.g. Jekyll post date prefix)
-    try:
-        slug = fm.apply_slug_transform(slug)
-    except ValueError as e:
-        # TODO: This probably doesnt need to be a program ending error
-        raise ConversionError(filepath=str(filepath), reason=str(e))
-
-    return slug
+    return slugify_text(Path(filepath).stem) + Path(filepath).suffix.strip().lower()
 
 
 def transform_md_match(match: re.Match, src_dir: Path = None, dest_dir: Path = None):
@@ -340,26 +332,21 @@ def build_link_mapping(config: Config) -> dict[str, LinkTarget]:
             # Get the note title (filename without extension)
             note_title = md_file.stem
 
-            # Generate the output slug
-            try:
-                content = md_file.read_text(encoding='utf-8')
-                fm = FrontMatter(content)
-                output_slug = slugify(ObsidianPath(md_file), fm)
-                # Remove .md extension for URL; a file in a subdirectory keeps it in its URL
-                output_slug_no_ext = (mapping.subdirectory_for(md_file) / Path(output_slug).stem).as_posix()
+            content = md_file.read_text(encoding='utf-8')
+            fm = FrontMatter(content)
+            output_slug = slugify(ObsidianPath(md_file))
+            # Remove .md extension for URL; a file in a subdirectory keeps it in its URL
+            output_slug_no_ext = (mapping.subdirectory_for(md_file) / Path(output_slug).stem).as_posix()
 
-                # Build output URL based on config format
-                # Remove leading underscore from collection name for URL (Jekyll convention)
-                collection_name = mapping.destination.name.lstrip('_')
-                output_url = config.url_format.format(collection=collection_name, slug=output_slug_no_ext)
+            # Build output URL based on config format
+            # Remove leading underscore from collection name for URL (Jekyll convention)
+            collection_name = mapping.destination.name.lstrip('_')
+            output_url = config.url_format.format(collection=collection_name, slug=output_slug_no_ext)
 
-                # Map both the original title and lowercase version
-                target = LinkTarget(url=output_url, anchors=HeadingAnchors(fm.body))
-                link_mapping[note_title] = target
-                link_mapping[note_title.lower()] = target
-            except ConversionError:
-                # Skip files that can't be slugified
-                continue
+            # Map both the original title and lowercase version
+            target = LinkTarget(url=output_url, anchors=HeadingAnchors(fm.body))
+            link_mapping[note_title] = target
+            link_mapping[note_title.lower()] = target
 
     return link_mapping
 
@@ -438,12 +425,17 @@ def process_file(source_filepath: ObsidianPath, target_directory: OutputPath, li
     if fm.yaml_error:
         raise ConversionError(source_filepath, f"Invalid front matter YAML: {fm.yaml_error}")
 
+    # The site generator's naming convention applies to the neutral name; breaking it fails validation too.
+    try:
+        output_filename = fm.apply_slug_transform(slugify(source_filepath))
+    except ValueError as e:
+        raise ConversionError(filepath=str(source_filepath), reason=str(e))
+
     # If validate_only, we're done
     if config.validate_only:
         return file_warnings
 
     # Otherwise, do the full conversion
-    output_filename = slugify(source_filepath, fm)
     original_filename = Path(source_filepath).name
 
     try:

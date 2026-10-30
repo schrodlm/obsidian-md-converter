@@ -62,6 +62,11 @@ class FrontMatter:
         return f"{problem} (line {mark.line + 2})"
 
     def apply_slug_transform(self, slug: str) -> str:
+        """Apply the site generator's file-naming convention to a neutral output name; none by default.
+
+        Raises:
+            ValueError: if the front matter lacks what the convention needs.
+        """
         return slug
     
     @property

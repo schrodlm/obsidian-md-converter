@@ -1,4 +1,6 @@
 import datetime
+import re
+import unicodedata
 from pathlib import Path
 
 
@@ -39,6 +41,23 @@ def parse_date(date_str: str) -> datetime.date | None:
         except ValueError:
             continue
     return None
+
+def slugify_text(text: str) -> str:
+    """
+    Transform text into a URL-safe slug: lowercase ASCII letters, digits and single hyphens.
+
+    Example:
+        "ABA problém (2)" -> "aba-problem-2"
+    """
+    # Decomposing splits an accented letter into the letter and its accent, so dropping
+    # everything non-ASCII keeps the letter ("é" -> "e").
+    text = unicodedata.normalize('NFKD', text.strip())
+    text = ''.join(char for char in text if char.isascii())
+
+    text = re.sub(r'[^\w\s-]', '', text)  # Remove remaining non-word chars
+    text = re.sub(r'[\s_-]+', '-', text)  # Convert spaces/underscores to hyphens
+
+    return text.lower()
 
 def enforce_dir(path: Path):
     if not path.exists():

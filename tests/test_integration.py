@@ -355,3 +355,30 @@ class TestOutputClashes:
         assert errors == []
         assert (output / "_notes" / "alpha" / "log.md").exists()
         assert (output / "_notes" / "beta" / "log.md").exists()
+
+
+class TestEmptyNotes:
+    """A note with nothing below its front matter is a placeholder: not published, and links to it are plain text."""
+
+    def test_empty_note_is_not_published_and_links_to_it_are_text(self, vault):
+        config, obsidian, output = vault
+        (obsidian / "notes" / "Load Balancer.md").write_text("\n  \n")
+        (obsidian / "notes" / "Header Only.md").write_text("---\ntags: [x]\n---\n\n")
+        (obsidian / "notes" / "Hello World.md").write_text("Behind a [[Load Balancer]].\n")
+
+        errors, warnings, total_files = process_mappings(build_link_mapping(config), config)
+
+        assert errors == []
+        assert not (output / "_notes" / "load-balancer.md").exists()
+        assert not (output / "_notes" / "header-only.md").exists()
+        assert "Behind a Load Balancer." in (output / "_notes" / "hello-world.md").read_text()
+
+    def test_empty_note_does_not_clash_with_the_real_one(self, vault):
+        config, obsidian, output = vault
+        (obsidian / "notes" / "Delivery (protocols).md").write_text("Real note\n")
+        (obsidian / "notes" / "Delivery protocols.md").write_text("")
+
+        errors, warnings, total_files = process_mappings(link_mapping={}, config=config)
+
+        assert errors == []
+        assert "Real note" in (output / "_notes" / "delivery-protocols.md").read_text()

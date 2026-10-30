@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import os
-import unicodedata
 import re
 import argparse
 import sys
@@ -13,7 +12,7 @@ from obsidian_md_converter.front_matter import create_front_matter, FrontMatter
 from obsidian_md_converter.paths import ObsidianPath, OutputPath
 from obsidian_md_converter.errors import ConversionError
 from obsidian_md_converter.config import Config
-from obsidian_md_converter.utils import enforce_dir
+from obsidian_md_converter.utils import enforce_dir, slugify_text
 from obsidian_md_converter.mapping import Mapping
 from obsidian_md_converter.headings import HeadingAnchors
 
@@ -45,12 +44,9 @@ def remove_contents_of(directory: OutputPath):
         for name in dirs:
             (Path(root) / name).rmdir()
 
-"""
-Retrieves the files that will be converted to markdown and published to the output directory
-- currently it does assume that Publish subdirectories will not contain any nested subdirectories, if such a feature is wanted, it needs to be implemented here first and foremost
-"""
 def get_directory_md_files(directory: Path) -> list[Path]:
-    return list(directory.glob("*.md"))
+    """The markdown files a mapping publishes: every one under its source directory, subdirectories included."""
+    return list(directory.rglob("*.md"))
 
 def slugify(filepath: ObsidianPath, fm: FrontMatter):
     """
@@ -72,22 +68,7 @@ def slugify(filepath: ObsidianPath, fm: FrontMatter):
         "Hello World!.md" -> "hello-world.md"
     """
 
-    # Remove the file extension temporarily
-    stem = Path(filepath).stem.strip()
-    ext = Path(filepath).suffix.strip()
-
-    # Normalize unicode characters (convert é to e, etc.)
-    stem = unicodedata.normalize('NFKD', stem)
-
-    # Convert to ASCII, ignoring non-ASCII chars
-    stem = stem.encode('ascii', 'ignore').decode('ascii')
-
-    # Replace various special characters with hyphens
-    stem = re.sub(r'[^\w\s-]', '', stem)  # Remove remaining non-word chars
-    stem = re.sub(r'[\s_-]+', '-', stem)  # Convert spaces/underscores to hyphens
-
-    # Convert to lowercase and reattach extension
-    slug = stem.lower() + ext.lower()
+    slug = slugify_text(Path(filepath).stem) + Path(filepath).suffix.strip().lower()
 
     # Apply front matter specific slug transformations (e.g. Jekyll post date prefix)
     try:
@@ -364,8 +345,8 @@ def build_link_mapping(config: Config) -> dict[str, LinkTarget]:
                 content = md_file.read_text(encoding='utf-8')
                 fm = FrontMatter(content)
                 output_slug = slugify(ObsidianPath(md_file), fm)
-                # Remove .md extension for URL
-                output_slug_no_ext = Path(output_slug).stem
+                # Remove .md extension for URL; a file in a subdirectory keeps it in its URL
+                output_slug_no_ext = (mapping.subdirectory_for(md_file) / Path(output_slug).stem).as_posix()
 
                 # Build output URL based on config format
                 # Remove leading underscore from collection name for URL (Jekyll convention)
@@ -467,6 +448,7 @@ def process_file(source_filepath: ObsidianPath, target_directory: OutputPath, li
 
     try:
         dst = target_directory / output_filename
+        dst.parent.mkdir(parents=True, exist_ok=True)
 
         # Apply front matter processing
         #TODO: Move logic to to fm.try_apply()
@@ -543,10 +525,11 @@ def process_mappings(link_mapping: dict[str, LinkTarget], config: Config):
 
         processed = 0
         for source_file in source_files:
+            target_directory = None if config.validate_only else mapping.output_directory_for(source_file)
             try:
                 file_warnings = process_file(
                     ObsidianPath(source_file),
-                    mapping.destination if not config.validate_only else None,
+                    target_directory,
                     link_mapping,
                     config
                 )

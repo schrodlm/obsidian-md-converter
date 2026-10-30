@@ -201,3 +201,20 @@ class TestMappingEquality:
         m = Mapping.from_string("src:dst")
         with pytest.raises(AttributeError):
             m.source = "other"
+
+class TestOutputLocation:
+    """A source file keeps its slugified subdirectory below the mapping's destination."""
+
+    def make_mapping(self):
+        return Mapping(ObsidianPath("logs"), OutputPath("_logs"), MappingFlags())
+
+    def test_file_directly_in_source_has_no_subdirectory(self):
+        mapping = self.make_mapping()
+        assert mapping.subdirectory_for(ObsidianPath("logs/entry.md").path) == Path(".")
+        assert mapping.output_directory_for(ObsidianPath("logs/entry.md").path).path == OutputPath("_logs").path
+
+    def test_nested_file_keeps_its_slugified_subdirectory(self):
+        mapping = self.make_mapping()
+        source = ObsidianPath("logs/Moje Projekty/rentczecher/2026-10-16 Entry.md").path
+        assert mapping.subdirectory_for(source) == Path("moje-projekty/rentczecher")
+        assert mapping.output_directory_for(source).path == OutputPath("_logs/moje-projekty/rentczecher").path

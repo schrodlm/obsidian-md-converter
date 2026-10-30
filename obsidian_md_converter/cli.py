@@ -470,6 +470,14 @@ def process_file(source_filepath: ObsidianPath, target_directory: OutputPath, li
 
     return file_warnings
 
+def find_output_clashes(source_files: list[Path], mapping: Mapping) -> dict[Path, list[Path]]:
+    """Group the source files that share a neutral output path, keeping only the groups of two or more."""
+    sources_by_output: dict[Path, list[Path]] = {}
+    for source_file in source_files:
+        output = mapping.subdirectory_for(source_file) / slugify(ObsidianPath(source_file))
+        sources_by_output.setdefault(output, []).append(source_file)
+    return {output: sources for output, sources in sources_by_output.items() if len(sources) > 1}
+
 def process_mappings(link_mapping: dict[str, LinkTarget], config: Config):
     """
     Process all source->destination mappings.
@@ -515,8 +523,16 @@ def process_mappings(link_mapping: dict[str, LinkTarget], config: Config):
         print(f"Found {len(source_files)} markdown files")
         total_files += len(source_files)
 
+        clashes = find_output_clashes(source_files, mapping)
+        for output, clashing_sources in clashes.items():
+            names = " and ".join(f"'{source.name}'" for source in clashing_sources)
+            errors.append(f"{names} would both be written to {output}; rename one of them")
+        clashing_files = {source for clashing_sources in clashes.values() for source in clashing_sources}
+
         processed = 0
         for source_file in source_files:
+            if source_file in clashing_files:
+                continue
             target_directory = None if config.validate_only else mapping.output_directory_for(source_file)
             try:
                 file_warnings = process_file(

@@ -45,8 +45,14 @@ def remove_contents_of(directory: OutputPath):
             (Path(root) / name).rmdir()
 
 def get_directory_md_files(directory: Path) -> list[Path]:
-    """The markdown files a mapping publishes: every one under its source directory, subdirectories included."""
-    return list(directory.rglob("*.md"))
+    """The markdown files a mapping publishes: every one under its source directory, subdirectories included.
+
+    A note with nothing below its front matter is a placeholder and is not published.
+    """
+    return [path for path in directory.rglob("*.md") if not is_empty_note(path)]
+
+def is_empty_note(path: Path) -> bool:
+    return not FrontMatter(path.read_text(encoding='utf-8')).body.strip()
 
 def slugify(filepath: ObsidianPath) -> str:
     """

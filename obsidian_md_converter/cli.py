@@ -45,14 +45,13 @@ def remove_contents_of(directory: OutputPath):
             (Path(root) / name).rmdir()
 
 def get_directory_md_files(directory: Path) -> list[Path]:
-    """The markdown files a mapping publishes: every one under its source directory, subdirectories included.
+    """The markdown files a mapping publishes: every one under its source directory, subdirectories included."""
+    return [path for path in directory.rglob("*.md") if is_published(path)]
 
-    A note with nothing below its front matter is a placeholder and is not published.
-    """
-    return [path for path in directory.rglob("*.md") if not is_empty_note(path)]
-
-def is_empty_note(path: Path) -> bool:
-    return not FrontMatter(path.read_text(encoding='utf-8')).body.strip()
+def is_published(path: Path) -> bool:
+    """A note is published unless it is a draft (`draft: true`) or a placeholder with nothing below its front matter."""
+    fm = FrontMatter(path.read_text(encoding='utf-8'))
+    return fm.get('draft') is not True and bool(fm.body.strip())
 
 def slugify(filepath: ObsidianPath) -> str:
     """

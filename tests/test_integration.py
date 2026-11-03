@@ -382,3 +382,29 @@ class TestEmptyNotes:
 
         assert errors == []
         assert "Real note" in (output / "_notes" / "delivery-protocols.md").read_text()
+
+
+class TestDrafts:
+    """A note marked `draft: true` is not published, and links to it are plain text."""
+
+    def test_draft_is_not_published_and_links_to_it_are_text(self, vault):
+        config, obsidian, output = vault
+        (obsidian / "notes" / "Work In Progress.md").write_text("---\ndraft: true\n---\nNot ready\n")
+        (obsidian / "notes" / "Hello World.md").write_text("See [[Work In Progress]].\n")
+
+        errors, warnings, total_files = process_mappings(build_link_mapping(config), config)
+
+        assert errors == []
+        assert not (output / "_notes" / "work-in-progress.md").exists()
+        assert "See Work In Progress." in (output / "_notes" / "hello-world.md").read_text()
+
+    def test_draft_false_and_quoted_true_are_published(self, vault):
+        config, obsidian, output = vault
+        (obsidian / "notes" / "Finished.md").write_text("---\ndraft: false\n---\nDone\n")
+        (obsidian / "notes" / "Quoted.md").write_text('---\ndraft: "true"\n---\nText, not a boolean\n')
+
+        errors, warnings, total_files = process_mappings(link_mapping={}, config=config)
+
+        assert errors == []
+        assert (output / "_notes" / "finished.md").exists()
+        assert (output / "_notes" / "quoted.md").exists()

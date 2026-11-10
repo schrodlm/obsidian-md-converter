@@ -12,7 +12,8 @@ from obsidian_md_converter.front_matter import create_front_matter, FrontMatter
 from obsidian_md_converter.paths import ObsidianPath, OutputPath
 from obsidian_md_converter.errors import ConversionError
 from obsidian_md_converter.config import Config
-from obsidian_md_converter.utils import enforce_dir, slugify_text
+from obsidian_md_converter.utils import enforce_dir
+from obsidian_md_converter.naming import slugify
 from obsidian_md_converter.mapping import Mapping
 from obsidian_md_converter.headings import HeadingAnchors
 
@@ -52,36 +53,6 @@ def is_published(path: Path) -> bool:
     """A note is published unless it is a draft (`draft: true`) or a placeholder with nothing below its front matter."""
     fm = FrontMatter(path.read_text(encoding='utf-8'))
     return fm.get('draft') is not True and bool(fm.body.strip())
-
-def slugify(filepath: ObsidianPath) -> str:
-    """
-    Transform a filename into its neutral, URL-safe output name.
-
-    The name is the same for every site generator; a generator's own naming
-    convention (such as Jekyll's dated post filenames) is applied when the file is written.
-
-    Args:
-        filepath: ObsidianPath object pointing to the file to convert
-
-    Returns:
-        A sanitized filename with:
-        - Only lowercase letters, numbers, and hyphens
-        - No special characters or punctuation
-        - Spaces converted to hyphens
-        - Multiple hyphens collapsed
-        - Leading/trailing hyphens removed
-
-    Example:
-        "Hello World!.md" -> "hello-world.md"
-
-    Raises:
-        ConversionError: if the name has no letters or digits to build the slug from.
-    """
-    stem_slug = slugify_text(Path(filepath).stem)
-    if not stem_slug:
-        raise ConversionError(filepath, "its name has no letters or digits to build a URL from; rename it")
-    return stem_slug + Path(filepath).suffix.strip().lower()
-
 
 def transform_md_match(match: re.Match, src_dir: Path = None, dest_dir: Path = None):
     """

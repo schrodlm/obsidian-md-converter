@@ -3,7 +3,7 @@ from pathlib import Path
 
 from obsidian_md_converter.paths import ObsidianPath, OutputPath
 from obsidian_md_converter.errors import ConfigError
-from obsidian_md_converter.utils import slugify_text
+from obsidian_md_converter.naming import slugify_text
 
 
 # A vault directory published into an output directory

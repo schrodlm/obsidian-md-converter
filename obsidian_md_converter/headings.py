@@ -25,12 +25,25 @@ def heading_key(text: str) -> str:
 
 def rendered_heading_text(source: str) -> str:
     """The heading's visible text once its links are rendered: a link shows only its display text."""
-    def wikilink_text(match: re.Match) -> str:
-        display = match.group('display')
-        return (display if display is not None else match.group('target')).strip()
+    scanned = scanning.scan_body(source)
+    pieces = []
+    position = 0
+    for structure in sorted([*scanned.links, *scanned.embeds, *scanned.markdown_links, *scanned.markdown_images],
+                            key=lambda structure: structure.span.start):
+        pieces.append(source[position:structure.span.start])
+        pieces.append(_visible_text(structure))
+        position = structure.span.end
+    pieces.append(source[position:])
+    return "".join(pieces)
 
-    text = _WIKILINK_RE.sub(wikilink_text, source)
-    return _MARKDOWN_LINK_RE.sub(lambda m: m.group('text'), text)
+
+def _visible_text(structure) -> str:
+    if isinstance(structure, (scanning.WikiLink, scanning.Embed)):
+        target, separator, display = structure.raw.partition('|')
+        return (display if separator else target).strip()
+    if isinstance(structure, scanning.MarkdownLink):
+        return structure.text
+    return structure.alt
 
 
 class HeadingAnchors:

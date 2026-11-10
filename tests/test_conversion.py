@@ -74,3 +74,44 @@ class TestImages:
     def test_validation_leaves_site_images_alone(self, convert):
         site = convert({"notes/Hello.md": "Body\n"}, validate=True, existing_site={"assets/img/stale.png": b"\x89PNG stale"})
         assert site.has("assets/img/stale.png")
+
+
+class TestLinks:
+    """Wikilinks become links to the published page, to the heading's anchor when they name one."""
+
+    TARGET = {"notes/Second Note.md": "## Totální uspořádání (total ordering)\ntext\n"}
+
+    def test_link_to_a_note_points_at_its_page(self, convert):
+        site = convert(self.TARGET | {"notes/Hello.md": "See [[Second Note|the second]].\n"})
+        assert "[the second](/notes/second-note.html)" in site.page("_notes/hello.md")
+        assert site.warnings == []
+
+    def test_link_matches_the_note_name_case_insensitively(self, convert):
+        site = convert(self.TARGET | {"notes/Hello.md": "See [[second note]].\n"})
+        assert "[second note](/notes/second-note.html)" in site.page("_notes/hello.md")
+
+    def test_link_to_a_heading_points_at_its_anchor(self, convert):
+        site = convert(self.TARGET | {"notes/Hello.md": "See [[Second Note#Totální uspořádání (total ordering)|ordering]].\n"})
+        assert "[ordering](/notes/second-note.html#totální-uspořádání-total-ordering)" in site.page("_notes/hello.md")
+        assert site.warnings == []
+
+    def test_heading_link_without_display_text_shows_note_and_heading(self, convert):
+        site = convert(self.TARGET | {"notes/Hello.md": "See [[second note#totální uspořádání (total ordering)]].\n"})
+        assert ("[second note > totální uspořádání (total ordering)](/notes/second-note.html#totální-uspořádání-total-ordering)"
+                in site.page("_notes/hello.md"))
+
+    def test_link_to_a_missing_heading_points_at_the_page_and_warns(self, convert):
+        site = convert(self.TARGET | {"notes/Hello.md": "See [[Second Note#Renamed|ordering]].\n"})
+        assert "[ordering](/notes/second-note.html)" in site.page("_notes/hello.md")
+        assert len(site.warnings) == 1
+        assert "Renamed" in site.warnings[0]
+
+    def test_link_to_a_heading_in_the_same_note_is_a_bare_anchor(self, convert):
+        site = convert({"notes/Hello.md": "## Prefix key\nSee [[#Prefix key]].\n"})
+        assert "[Prefix key](#prefix-key)" in site.page("_notes/hello.md")
+        assert site.warnings == []
+
+    def test_link_to_a_missing_note_is_plain_text_without_warning(self, convert):
+        site = convert({"notes/Hello.md": "See [[Not Written Yet|later]] and [[Not Written Yet#Part]].\n"})
+        assert "See later and Not Written Yet > Part." in site.page("_notes/hello.md")
+        assert site.warnings == []

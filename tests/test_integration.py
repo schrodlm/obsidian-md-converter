@@ -61,68 +61,6 @@ front_matter:
     return config, obsidian, output
 
 
-class TestBuildLinkMapping:
-    """End-to-end: config with source_mappings → link mapping dict."""
-
-    def test_builds_mapping_for_notes(self, vault):
-        config, obsidian, output = vault
-        mapping = build_link_mapping(config)
-
-        # Both notes should be mapped (original + lowercase)
-        assert "Hello World" in mapping
-        assert "Second Note" in mapping
-        # URL format applied
-        assert mapping["Hello World"].url.endswith(".html")
-        assert "/notes/" in mapping["Hello World"].url
-
-class TestLinks:
-    """Wikilinks become links to the published page, to the heading's anchor when they name one."""
-
-    def convert(self, vault, body):
-        config, obsidian, output = vault
-        (obsidian / "notes" / "Second Note.md").write_text(
-            "---\ntitle: \"Second Note\"\n---\n## Totální uspořádání (total ordering)\ntext\n"
-        )
-        source = obsidian / "notes" / "Hello World.md"
-        source.write_text(body)
-        target = OutputPath(output / "_notes")
-
-        warnings = process_file(ObsidianPath(source), target, build_link_mapping(config), config)
-
-        content = (target.path / "hello-world.md").read_text()
-        return content, warnings
-
-    def test_link_to_a_note_points_at_its_page(self, vault):
-        content, warnings = self.convert(vault, "See [[Second Note|the second]].\n")
-        assert "[the second](/notes/second-note.html)" in content
-        assert warnings == []
-
-    def test_link_to_a_heading_points_at_its_anchor(self, vault):
-        content, warnings = self.convert(vault, "See [[Second Note#Totální uspořádání (total ordering)|ordering]].\n")
-        assert "[ordering](/notes/second-note.html#totální-uspořádání-total-ordering)" in content
-        assert warnings == []
-
-    def test_heading_link_without_display_text_shows_note_and_heading(self, vault):
-        content, _ = self.convert(vault, "See [[second note#totální uspořádání (total ordering)]].\n")
-        assert "[second note > totální uspořádání (total ordering)](/notes/second-note.html#totální-uspořádání-total-ordering)" in content
-
-    def test_link_to_a_missing_heading_points_at_the_page_and_warns(self, vault):
-        content, warnings = self.convert(vault, "See [[Second Note#Renamed|ordering]].\n")
-        assert "[ordering](/notes/second-note.html)" in content
-        assert len(warnings) == 1
-        assert "Renamed" in warnings[0]
-
-    def test_link_to_a_heading_in_the_same_note_is_a_bare_anchor(self, vault):
-        content, warnings = self.convert(vault, "## Prefix key\nSee [[#Prefix key]].\n")
-        assert "[Prefix key](#prefix-key)" in content
-        assert warnings == []
-
-    def test_link_to_a_missing_note_is_plain_text_without_warning(self, vault):
-        content, warnings = self.convert(vault, "See [[Not Written Yet|later]] and [[Not Written Yet#Part]].\n")
-        assert "See later and Not Written Yet > Part." in content
-        assert warnings == []
-
-
 class TestObsidianSyntaxPassesThrough:
     """Obsidian syntax the site renders itself reaches the output exactly as written."""
 

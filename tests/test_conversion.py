@@ -1,5 +1,8 @@
 """Whole conversions of small vaults, grouped by feature."""
 
+from obsidian_md_converter.cli import slugify
+from obsidian_md_converter.paths import ObsidianPath
+
 
 class TestFixtureVaults:
     """A fixture vault from tests/vaults/ converts like a real one."""
@@ -141,3 +144,23 @@ class TestSubfolders:
         assert site.errors == []
         assert site.has("_notes/moje-projekty/rentczecher/first-entry.md")
         assert "[First Entry](/notes/moje-projekty/rentczecher/first-entry.html)" in site.page("_notes/hello.md")
+
+
+class TestOutputNames:
+    """The neutral output name is the same for every generator; Jekyll's post convention is applied when the file is written."""
+
+    POST = "---\nlayout: post\ndate: 2024-12-20\n---\nBody\n"
+
+    def test_neutral_name_ignores_post_front_matter(self, tmp_path):
+        ObsidianPath.configure_root(tmp_path)
+        post = tmp_path / "Turing Machine.md"
+        post.write_text(self.POST)
+        assert slugify(ObsidianPath(post)) == "turing-machine.md"
+
+    def test_jekyll_post_is_written_under_its_dated_name(self, convert):
+        site = convert({"publish/posts/Turing Machine.md": self.POST})
+        assert site.has("_posts/2024-12-20-turing-machine.md")
+
+    def test_validation_fails_a_jekyll_post_without_a_date(self, convert):
+        site = convert({"publish/posts/Undated.md": "---\nlayout: post\n---\nBody\n"}, validate=True)
+        assert any("Undated.md" in e and "date" in e for e in site.errors)

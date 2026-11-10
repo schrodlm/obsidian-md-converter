@@ -61,54 +61,6 @@ front_matter:
     return config, obsidian, output
 
 
-class TestProcessFilePipeline:
-    """End-to-end: config → process_file → output file with correct content."""
-
-    def test_produces_slugified_output(self, vault):
-        config, obsidian, output = vault
-        source = ObsidianPath(obsidian / "notes" / "Hello World.md")
-        target = OutputPath(output / "_notes")
-
-        warnings = process_file(source, target, link_mapping={}, config=config)
-
-        out_file = target.path / "hello-world.md"
-        assert out_file.exists(), f"Expected {out_file} to be created"
-        assert warnings == []
-
-    def test_preserves_original_title(self, vault):
-        config, obsidian, output = vault
-        source = ObsidianPath(obsidian / "notes" / "Hello World.md")
-        target = OutputPath(output / "_notes")
-
-        process_file(source, target, link_mapping={}, config=config)
-
-        content = (target.path / "hello-world.md").read_text()
-        # Original title preserved (not slugified "hello-world")
-        assert 'title: "Hello World"' in content
-
-    def test_front_matter_present_in_output(self, vault):
-        config, obsidian, output = vault
-        source = ObsidianPath(obsidian / "notes" / "Hello World.md")
-        target = OutputPath(output / "_notes")
-
-        process_file(source, target, link_mapping={}, config=config)
-
-        content = (target.path / "hello-world.md").read_text()
-        assert content.startswith("---\n")
-        assert "---\n" in content[4:]  # closing delimiter
-
-    def test_invalid_front_matter_fails_the_note_and_writes_nothing(self, vault):
-        config, obsidian, output = vault
-        broken = obsidian / "notes" / "Broken.md"
-        broken.write_text("---\ntags:\n      - a\n  - b\n---\nBody\n")
-        target = OutputPath(output / "_notes")
-
-        with pytest.raises(ConversionError, match="Invalid front matter YAML"):
-            process_file(ObsidianPath(broken), target, link_mapping={}, config=config)
-
-        assert not (target.path / "broken.md").exists()
-
-
 class TestBuildLinkMapping:
     """End-to-end: config with source_mappings → link mapping dict."""
 

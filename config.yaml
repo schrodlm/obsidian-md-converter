@@ -10,7 +10,6 @@ paths:
 source_mappings: []
   # - source: "notes"
   #   destination: "_notes"
-  #   transform_links: true
 
 # Image handling (relative to their respective roots)
 images:

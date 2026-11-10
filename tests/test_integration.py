@@ -49,7 +49,6 @@ images:
 source_mappings:
   - source: "notes"
     destination: "_notes"
-    transform_links: true
 links:
   url_format: "/{{collection}}/{{slug}}.html"
 front_matter:

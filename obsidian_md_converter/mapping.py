@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 
 from obsidian_md_converter.paths import ObsidianPath, OutputPath
@@ -6,17 +6,11 @@ from obsidian_md_converter.errors import ConfigError
 from obsidian_md_converter.utils import slugify_text
 
 
-@dataclass
-class MappingFlags():
-    transform_links: bool = False
-
-# Class to represent mapping of different subdirectories of root to the output dirs and 
-# provide a way to define specific settings for them
+# A vault directory published into an output directory
 @dataclass(frozen=True)
 class Mapping():
     source: ObsidianPath
     destination: OutputPath
-    flags: MappingFlags = field(compare=False, hash=False)
 
     def __post_init__(self):
         if not self.source:
@@ -44,9 +38,4 @@ class Mapping():
         source = ObsidianPath(entry.get('source'))
         destination = OutputPath(entry.get('destination'))
 
-        mf = MappingFlags()
-        for attr, _ in mf.__dict__.items():
-            if entry.get(attr):
-                setattr(mf,attr, True)
-
-        return Mapping(source,destination,mf)
+        return Mapping(source, destination)

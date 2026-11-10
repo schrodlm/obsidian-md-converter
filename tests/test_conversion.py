@@ -228,3 +228,17 @@ class TestDrafts:
         assert site.errors == []
         assert site.has("_notes/finished.md")
         assert site.has("_notes/quoted.md")
+
+
+class TestUnusableNames:
+    """A note whose name has nothing to build a URL from fails, naming the file; names in other scripts are transliterated."""
+
+    def test_punctuation_only_name_fails_and_writes_nothing(self, convert):
+        site = convert({"notes/???.md": "Body\n"})
+        assert any("???.md" in e and "rename it" in e for e in site.errors)
+        assert not site.has("_notes/.md")
+
+    def test_names_in_other_scripts_are_transliterated(self, convert):
+        site = convert({"notes/Привет мир.md": "Body\n"})
+        assert site.errors == []
+        assert site.has("_notes/privet-mir.md")

@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import os
-import re
 import argparse
 import sys
 
@@ -13,8 +12,9 @@ from obsidian_md_converter.config import Config
 from obsidian_md_converter.utils import enforce_dir
 from obsidian_md_converter.naming import slugify
 from obsidian_md_converter.publishing import get_directory_md_files, find_output_clashes
-from obsidian_md_converter.links import LinkTarget, NoteLinks, build_link_mapping, transform_md_ref
-from obsidian_md_converter.images import transform_md_match, transform_image_ref, ensure_image_available, validate_images_in_content
+from obsidian_md_converter.links import LinkTarget, NoteLinks, build_link_mapping
+from obsidian_md_converter.images import validate_images_in_content
+from obsidian_md_converter.references import transform_references
 from obsidian_md_converter.mapping import Mapping
 from obsidian_md_converter.headings import HeadingAnchors
 
@@ -30,85 +30,6 @@ def remove_contents_of(directory: OutputPath):
             (Path(root) / name).unlink()
         for name in dirs:
             (Path(root) / name).rmdir()
-
-def transform_obsidian_match(match, src_dir: Path = None, dest_dir: Path = None, links: NoteLinks = None):
-    """
-    Transforms Obsidian-style links ([[ ]]) into standard markdown format.
-
-    Args:
-        match: re.Match object from Obsidian link pattern
-        src_dir: Source directory for images (from config)
-        dest_dir: Destination directory for images (from config)
-        links: The published notes and the current note's headings, for document links
-
-    Returns:
-        Transformed markdown string or display text
-
-    Examples:
-        # Obsidian image with dimensions
-        Input:  ![[images/logo.png|200]]
-        Output: ![Image](../assets/images/logo.png){:width="200"}
-
-        # Obsidian document link with display text
-        Input:  [[README.md|Readme File]]
-        Output: [Readme File](/notes/readme/)
-
-        # Obsidian image with alt text
-        Input:  ![[logo.png|Company Logo]]
-        Output: ![Company Logo](../assets/logo.png)
-    """
-    is_image = match.group(1) == '!'
-    full_ref = match.group(2)
-    if is_image:
-        new_content, relative_src_path = transform_image_ref(full_ref, dest_dir, OutputPath._root)
-        dst_path = dest_dir / relative_src_path
-        src_path = src_dir / relative_src_path
-
-        ensure_image_available(
-            src_path,
-            dst_path
-        )
-        return new_content
-    else:
-        return transform_md_ref(full_ref, links)
-    
-def transform_references(filepath: OutputPath, src_dir: ObsidianPath, dest_dir: OutputPath, links: NoteLinks = None):
-    """
-    Transform Obsidian-style references to standard markdown format.
-    Handles both document links and image references.
-
-    Document links are converted to standard markdown links to the published notes in links.
-    A link to a note that is not published becomes its display text.
-
-    Image references are transferred from their source to the output image directory (from config)
-        Image reference can be in form:
-        1. ![Alt text](path/to/image.png)
-        2. ![[image.png]]                           - has to be in image folder (specified in Obsidian config)
-        3. ![[path/to/image.png|200]]               - fixed width
-        4. ![[path/to/image.png|200x100]]           - fixed width and height
-        5. ![[path/to/image.png|My Alt Text]]       - alt text
-        6. ![[path/to/image.png|My Alt Text|200]]   - alt text + resize
-    """
-    content = filepath.read_text(encoding='utf-8')
-
-    # Patterns for different reference types
-    obsidian_link_pattern = re.compile(r'(!?)\[\[([^\]\[]+)\]\]')  # ![[ ]] or [[ ]]
-    md_link_pattern = re.compile(r'(!?)\[([^\]]+)\]\(([^)]+)\)')    # ![]() or []()
-
-    # Use partial to pass parameters to transform functions
-    #TODO: Introduce some form of transformer that will invoke specific functions on what was matched
-    """
-    I would like to have classes like ClassicMarkdownConverter, PDFConverter.
-    Images will have to be embedded into some format I think.
-    """
-    from functools import partial
-    transform_md_with_params = partial(transform_md_match, src_dir=src_dir, dest_dir=dest_dir)
-    content = md_link_pattern.sub(transform_md_with_params, content)
-
-    transform_obsidian_with_params = partial(transform_obsidian_match, src_dir=src_dir, dest_dir=dest_dir, links=links)
-    content = obsidian_link_pattern.sub(transform_obsidian_with_params, content)
-
-    filepath.write_text(content, encoding='utf-8')
 
 def validate_file_readable(filepath: ObsidianPath):
     """Check if file is readable. Raises ConversionError if not."""

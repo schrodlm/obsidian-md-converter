@@ -406,3 +406,25 @@ class TestDrafts:
         assert errors == []
         assert (output / "_notes" / "finished.md").exists()
         assert (output / "_notes" / "quoted.md").exists()
+
+
+class TestUnusableNames:
+    """A note whose name has nothing to build a URL from fails, naming the file, instead of becoming a hidden '.md'."""
+
+    def test_punctuation_only_name_fails_and_writes_nothing(self, vault):
+        config, obsidian, output = vault
+        (obsidian / "notes" / "???.md").write_text("Body\n")
+
+        errors, warnings, total_files = process_mappings(build_link_mapping(config), config)
+
+        assert any("???.md" in e and "rename it" in e for e in errors)
+        assert not (output / "_notes" / ".md").exists()
+
+    def test_names_in_other_scripts_are_transliterated(self, vault):
+        config, obsidian, output = vault
+        (obsidian / "notes" / "Привет мир.md").write_text("Body\n")
+
+        errors, warnings, total_files = process_mappings(build_link_mapping(config), config)
+
+        assert errors == []
+        assert (output / "_notes" / "privet-mir.md").exists()

@@ -164,3 +164,25 @@ class TestOutputNames:
     def test_validation_fails_a_jekyll_post_without_a_date(self, convert):
         site = convert({"publish/posts/Undated.md": "---\nlayout: post\n---\nBody\n"}, validate=True)
         assert any("Undated.md" in e and "date" in e for e in site.errors)
+
+
+class TestOutputClashes:
+    """Two notes that would be written to the same file fail the run, and neither is written."""
+
+    CLASHING = {"notes/Délivery (protocols).md": "Real note\n", "notes/delivery protocols.md": "Leftover\n"}
+
+    def test_clashing_notes_are_an_error_and_neither_is_written(self, convert):
+        site = convert(self.CLASHING | {"notes/Hello World.md": "Body\n"})
+        assert len([e for e in site.errors if "would both be written to delivery-protocols.md" in e]) == 1
+        assert not site.has("_notes/delivery-protocols.md")
+        assert site.has("_notes/hello-world.md")
+
+    def test_validation_reports_clashes(self, convert):
+        site = convert(self.CLASHING, validate=True)
+        assert any("would both be written to" in e for e in site.errors)
+
+    def test_same_name_in_different_subfolders_does_not_clash(self, convert):
+        site = convert({"notes/alpha/Log.md": "alpha\n", "notes/beta/Log.md": "beta\n"})
+        assert site.errors == []
+        assert site.has("_notes/alpha/log.md")
+        assert site.has("_notes/beta/log.md")

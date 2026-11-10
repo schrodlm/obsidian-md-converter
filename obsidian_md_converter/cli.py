@@ -323,10 +323,6 @@ def build_link_mapping(config: Config) -> dict[str, LinkTarget]:
 
     for mapping in config.source_mappings:
         mapping : Mapping
-        # Skip if link transformation is disabled
-        if not mapping.flags.transform_links:
-            continue
-
         if not mapping.source.exists():
             continue
 

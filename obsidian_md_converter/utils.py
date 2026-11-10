@@ -44,7 +44,7 @@ def parse_date(date_str: str) -> datetime.date | None:
 
 def slugify_text(text: str) -> str:
     """
-    Transform text into a URL-safe slug: lowercase ASCII letters, digits and single hyphens.
+    Transform text into a URL-safe slug: lowercase ASCII letters and digits joined by single hyphens.
 
     Example:
         "ABA problém (2)" -> "aba-problem-2"
@@ -57,7 +57,7 @@ def slugify_text(text: str) -> str:
     text = re.sub(r'[^\w\s-]', '', text)  # Remove remaining non-word chars
     text = re.sub(r'[\s_-]+', '-', text)  # Convert spaces/underscores to hyphens
 
-    return text.lower()
+    return text.strip('-').lower()
 
 def enforce_dir(path: Path):
     if not path.exists():

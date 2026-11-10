@@ -128,3 +128,16 @@ class TestObsidianSyntaxPassesThrough:
         page = site.page("_notes/hello.md")
         assert "> [!note] Pozor\n> - not self-balancing, see [Second Note](/notes/second-note.html)\n" in page
         assert "> [!important]\n> untitled\n" in page
+
+
+class TestSubfolders:
+    """Notes in subfolders of a mapping are published below its destination, keeping their slugified folder path."""
+
+    def test_nested_note_is_written_into_its_subfolder_and_linked_there(self, convert):
+        site = convert({
+            "notes/Moje Projekty/rentczecher/First Entry.md": "Entry body\n",
+            "notes/Hello.md": "See [[First Entry]].\n",
+        })
+        assert site.errors == []
+        assert site.has("_notes/moje-projekty/rentczecher/first-entry.md")
+        assert "[First Entry](/notes/moje-projekty/rentczecher/first-entry.html)" in site.page("_notes/hello.md")

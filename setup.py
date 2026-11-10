@@ -4,7 +4,7 @@ setup(
     name='obsidian-md-converter',
     version='0.1.0',
     packages=find_packages(),
-    install_requires=['PyYAML>=6.0'],
+    install_requires=['PyYAML>=6.0', 'anyascii>=0.3'],
     extras_require={
         'test': ['pytest>=7.0'],
     },

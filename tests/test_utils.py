@@ -9,5 +9,5 @@ class TestSlugifyText:
         assert slugify_text("  2PC -- two_phase  commit ") == "2pc-two-phase-commit"
 
     def test_edge_hyphens_are_trimmed(self):
-        assert slugify_text("Ω λ x") == "x"
+        assert slugify_text("? x ?") == "x"
         assert slugify_text("- intro -") == "intro"

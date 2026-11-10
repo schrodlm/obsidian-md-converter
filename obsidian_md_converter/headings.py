@@ -4,9 +4,6 @@ from obsidian_md_converter import scanning
 
 _EXPLICIT_ID_RE = re.compile(r'[ \t]*\{#(?P<id>[^}\s]+)\}$')
 
-_WIKILINK_RE = re.compile(r'!?\[\[(?P<target>[^\]\[|]+)(?:\|(?P<display>[^\]\[]+))?\]\]')
-_MARKDOWN_LINK_RE = re.compile(r'!?\[(?P<text>[^\]]*)\]\([^)]*\)')
-
 # Characters Obsidian replaces with a space when matching a link to a heading.
 _OBSIDIAN_HEADING_PUNCTUATION_RE = re.compile(r'[!"#$%&()*+,.:;<=>?@^`{|}~\\/\[\]\r\n]')
 _GFM_NON_WORD_RE = re.compile(r'[^\w\- \t]')

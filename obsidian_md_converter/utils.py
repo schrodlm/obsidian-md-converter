@@ -1,8 +1,5 @@
 import datetime
-import re
 from pathlib import Path
-
-from anyascii import anyascii
 
 
 def parse_date(date_str: str) -> datetime.date | None:
@@ -42,21 +39,6 @@ def parse_date(date_str: str) -> datetime.date | None:
         except ValueError:
             continue
     return None
-
-def slugify_text(text: str) -> str:
-    """
-    Transform text into a URL-safe slug: lowercase ASCII letters and digits joined by single hyphens.
-
-    Example:
-        "ABA problém (2)" -> "aba-problem-2"
-    """
-    # Transliterate every script to ASCII ("problém" -> "problem", "Привет" -> "Privet", "Straße" -> "Strasse")
-    text = anyascii(text.strip())
-
-    text = re.sub(r'[^\w\s-]', '', text)  # Remove remaining non-word chars
-    text = re.sub(r'[\s_-]+', '-', text)  # Convert spaces/underscores to hyphens
-
-    return text.strip('-').lower()
 
 def enforce_dir(path: Path):
     if not path.exists():

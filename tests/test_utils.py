@@ -1,4 +1,4 @@
-from obsidian_md_converter.utils import slugify_text
+from obsidian_md_converter.naming import slugify_text
 
 
 class TestSlugifyText:

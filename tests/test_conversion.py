@@ -1,6 +1,6 @@
 """Whole conversions of small vaults, grouped by feature."""
 
-from obsidian_md_converter.cli import slugify
+from obsidian_md_converter.naming import slugify
 from obsidian_md_converter.paths import ObsidianPath
 
 

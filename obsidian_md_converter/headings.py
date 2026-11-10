@@ -1,5 +1,7 @@
 import re
 
+from obsidian_md_converter import scanning
+
 _ATX_HEADING_RE = re.compile(r'^#{1,6}[ \t]+(?P<text>.*?)[ \t]*#*[ \t]*$')
 _FENCE_RE = re.compile(r'^[ \t]*(```|~~~)')
 _EXPLICIT_ID_RE = re.compile(r'[ \t]*\{#(?P<id>[^}\s]+)\}$')
@@ -44,7 +46,7 @@ class HeadingAnchors:
         self._anchors: dict[str, str] = {}
         id_counts: dict[str, int] = {}
 
-        for source in self._heading_sources(body):
+        for source in (heading.text for heading in scanning.scan_body(body).headings):
             explicit = _EXPLICIT_ID_RE.search(source)
             if explicit:
                 source = source[:explicit.start()]

@@ -7,13 +7,14 @@ from obsidian_md_converter.config import Config
 from obsidian_md_converter.errors import ConversionError
 from obsidian_md_converter.front_matter import create_front_matter
 from obsidian_md_converter.headings import HeadingAnchors
-from obsidian_md_converter.images import validate_images_in_content
+from obsidian_md_converter.images import validate_images
 from obsidian_md_converter.links import LinkTarget, NoteLinks
 from obsidian_md_converter.mapping import Mapping
 from obsidian_md_converter.naming import slugify
 from obsidian_md_converter.paths import ObsidianPath, OutputPath
 from obsidian_md_converter.publishing import find_output_clashes, get_directory_md_files
-from obsidian_md_converter.references import transform_references
+from obsidian_md_converter.references import rewrite_references
+from obsidian_md_converter import scanning
 
 
 # DANGEROUS method, use with care!
@@ -53,7 +54,7 @@ def process_file(source_filepath: ObsidianPath, target_directory: OutputPath, li
     # Always validate first
     validate_file_readable(source_filepath)
     content = source_filepath.read_text(encoding='utf-8')
-    validate_images_in_content(content, config.obsidian_image_dir, source_filepath)
+    validate_images(scanning.scan(content), config.obsidian_image_dir, source_filepath)
 
     # Parse front matter once
     fm = create_front_matter(content, {'front_matter': config.front_matter_config})
@@ -106,7 +107,7 @@ def process_file(source_filepath: ObsidianPath, target_directory: OutputPath, li
             source_name=source_filepath.name,
             warnings=file_warnings,
         )
-        transform_references(dst, config.obsidian_image_dir, config.output_image_dir, links=links)
+        rewrite_references(dst, config.obsidian_image_dir, config.output_image_dir, links)
     except ConversionError as e:
         if dst.exists():
             dst.unlink()

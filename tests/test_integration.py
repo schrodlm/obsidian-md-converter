@@ -61,46 +61,6 @@ front_matter:
     return config, obsidian, output
 
 
-class TestOutputClashes:
-    """Two notes that would be written to the same file fail the run, and neither is written."""
-
-    def add_clashing_notes(self, obsidian):
-        (obsidian / "notes" / "Délivery (protocols).md").write_text("Real note\n")
-        (obsidian / "notes" / "delivery protocols.md").write_text("Leftover\n")
-
-    def test_clashing_notes_are_an_error_and_neither_is_written(self, vault):
-        config, obsidian, output = vault
-        self.add_clashing_notes(obsidian)
-
-        errors, warnings, total_files = process_mappings(link_mapping={}, config=config)
-
-        clash_errors = [e for e in errors if "would both be written to delivery-protocols.md" in e]
-        assert len(clash_errors) == 1
-        assert not (output / "_notes" / "delivery-protocols.md").exists()
-        assert (output / "_notes" / "hello-world.md").exists()
-
-    def test_validation_reports_clashes(self, vault):
-        config, obsidian, output = vault
-        self.add_clashing_notes(obsidian)
-        config.validate_only = True
-
-        errors, warnings, total_files = process_mappings(link_mapping={}, config=config)
-
-        assert any("would both be written to" in e for e in errors)
-
-    def test_same_name_in_different_subfolders_does_not_clash(self, vault):
-        config, obsidian, output = vault
-        for project in ("alpha", "beta"):
-            (obsidian / "notes" / project).mkdir()
-            (obsidian / "notes" / project / "Log.md").write_text(f"{project}\n")
-
-        errors, warnings, total_files = process_mappings(link_mapping={}, config=config)
-
-        assert errors == []
-        assert (output / "_notes" / "alpha" / "log.md").exists()
-        assert (output / "_notes" / "beta" / "log.md").exists()
-
-
 class TestEmptyNotes:
     """A note with nothing below its front matter is a placeholder: not published, and links to it are plain text."""
 

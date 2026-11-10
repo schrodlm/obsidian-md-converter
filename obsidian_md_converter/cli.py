@@ -369,12 +369,6 @@ def validate_file_readable(filepath: ObsidianPath):
     except Exception as e:
         raise ConversionError(filepath, f"File not readable: {e}")
 
-def validate_image_exists(img_ref: str, obsidian_image_dir: ObsidianPath, source_file: ObsidianPath):
-    """Check if referenced image exists. Raises ConversionError if not."""
-    img_path = obsidian_image_dir / img_ref
-    if not img_path.exists():
-        raise ConversionError(img_path, f"Referenced image does not exist: {img_ref} (in {source_file.name})")
-
 def validate_images_in_content(content: str, obsidian_image_dir: ObsidianPath, source_file: ObsidianPath):
     """
     Validate all image references in markdown content.

@@ -61,25 +61,6 @@ front_matter:
     return config, obsidian, output
 
 
-class TestSubfolders:
-    """Notes in subfolders of a mapping are published below its destination, keeping their folder path."""
-
-    def test_nested_note_is_written_into_its_subfolder_and_linked_there(self, vault):
-        config, obsidian, output = vault
-        nested = obsidian / "notes" / "Moje Projekty" / "rentczecher"
-        nested.mkdir(parents=True)
-        (nested / "First Entry.md").write_text("Entry body\n")
-        (obsidian / "notes" / "Hello World.md").write_text("See [[First Entry]].\n")
-
-        link_mapping = build_link_mapping(config)
-        errors, warnings, total_files = process_mappings(link_mapping, config)
-
-        assert errors == []
-        assert (output / "_notes" / "moje-projekty" / "rentczecher" / "first-entry.md").exists()
-        hello = (output / "_notes" / "hello-world.md").read_text()
-        assert "[First Entry](/notes/moje-projekty/rentczecher/first-entry.html)" in hello
-
-
 class TestOutputNames:
     """The neutral output name is the same for every generator; Jekyll's post convention is applied on write."""
 

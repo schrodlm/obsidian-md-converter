@@ -115,3 +115,16 @@ class TestLinks:
         site = convert({"notes/Hello.md": "See [[Not Written Yet|later]] and [[Not Written Yet#Part]].\n"})
         assert "See later and Not Written Yet > Part." in site.page("_notes/hello.md")
         assert site.warnings == []
+
+
+class TestObsidianSyntaxPassesThrough:
+    """Obsidian syntax the site renders itself reaches the output exactly as written."""
+
+    def test_callouts_keep_their_marker_title_and_body(self, convert):
+        site = convert({
+            "notes/Second Note.md": "Body\n",
+            "notes/Hello.md": "> [!note] Pozor\n> - not self-balancing, see [[Second Note]]\n\n> [!important]\n> untitled\n",
+        })
+        page = site.page("_notes/hello.md")
+        assert "> [!note] Pozor\n> - not self-balancing, see [Second Note](/notes/second-note.html)\n" in page
+        assert "> [!important]\n> untitled\n" in page

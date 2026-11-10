@@ -7,7 +7,8 @@ from pathlib import Path
 import pytest
 import yaml
 
-from obsidian_md_converter.cli import build_link_mapping, process_mappings
+from obsidian_md_converter.cli import process_mappings
+from obsidian_md_converter.links import build_link_mapping
 from obsidian_md_converter.config import Config
 
 VAULTS = Path(__file__).parent / "vaults"

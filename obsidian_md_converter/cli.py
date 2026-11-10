@@ -73,9 +73,14 @@ def slugify(filepath: ObsidianPath) -> str:
 
     Example:
         "Hello World!.md" -> "hello-world.md"
-    """
 
-    return slugify_text(Path(filepath).stem) + Path(filepath).suffix.strip().lower()
+    Raises:
+        ConversionError: if the name has no letters or digits to build the slug from.
+    """
+    stem_slug = slugify_text(Path(filepath).stem)
+    if not stem_slug:
+        raise ConversionError(filepath, "its name has no letters or digits to build a URL from; rename it")
+    return stem_slug + Path(filepath).suffix.strip().lower()
 
 
 def transform_md_match(match: re.Match, src_dir: Path = None, dest_dir: Path = None):
@@ -336,7 +341,11 @@ def build_link_mapping(config: Config) -> dict[str, LinkTarget]:
 
             content = md_file.read_text(encoding='utf-8')
             fm = FrontMatter(content)
-            output_slug = slugify(ObsidianPath(md_file))
+            try:
+                output_slug = slugify(ObsidianPath(md_file))
+            except ConversionError:
+                # Its conversion reports the unusable name; nothing can link to it.
+                continue
             # Remove .md extension for URL; a file in a subdirectory keeps it in its URL
             output_slug_no_ext = (mapping.subdirectory_for(md_file) / Path(output_slug).stem).as_posix()
 
@@ -476,7 +485,11 @@ def find_output_clashes(source_files: list[Path], mapping: Mapping) -> dict[Path
     """Group the source files that share a neutral output path, keeping only the groups of two or more."""
     sources_by_output: dict[Path, list[Path]] = {}
     for source_file in source_files:
-        output = mapping.subdirectory_for(source_file) / slugify(ObsidianPath(source_file))
+        try:
+            output = mapping.subdirectory_for(source_file) / slugify(ObsidianPath(source_file))
+        except ConversionError:
+            # Its conversion reports the unusable name.
+            continue
         sources_by_output.setdefault(output, []).append(source_file)
     return {output: sources for output, sources in sources_by_output.items() if len(sources) > 1}
 

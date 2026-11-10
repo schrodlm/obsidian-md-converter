@@ -580,8 +580,6 @@ def main():
                        help='Override output image directory (relative to output-root)')
     parser.add_argument('--config', type=str, default=None,
                        help='Path to config file (default: config.yaml next to the package)')
-    parser.add_argument('--mapping', type=str, action='append', default=None,
-                        help='Provide specific mappings (format: src:dst:flag1:flag2:...). Specified flags are set.')
     args = parser.parse_args()
 
     # Load configuration (YAML + CLI overrides merged in one step)
@@ -592,7 +590,6 @@ def main():
         output_root=args.output_root,
         obsidian_image_dir=args.obsidian_image_dir,
         output_image_dir=args.output_image_dir,
-        source_mappings=args.mapping,
         validate_only=args.validate or None,
         force_create=args.force or None,
         fix_source=args.fix or None,

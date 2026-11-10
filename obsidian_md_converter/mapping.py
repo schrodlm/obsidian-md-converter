@@ -50,22 +50,3 @@ class Mapping():
                 setattr(mf,attr, True)
 
         return Mapping(source,destination,mf)
-
-    @classmethod
-    def from_string(cls, entry: str) -> "Mapping":
-        parts = entry.split(':')
-        if len(parts) < 2:
-            raise ConfigError(f"Mapping must have at least src:dst, got \"{entry}\"")
-        src, dst = parts[0], parts[1]
-        flags = parts[2:]
-
-        mf = MappingFlags()
-        for flag in flags:
-            if hasattr(mf, flag):
-                setattr(mf, flag, True)
-            else:
-                raise ConfigError(f"No such flag \"{flag}\" exists.")
-
-        return Mapping(src, dst, mf)
-
-            

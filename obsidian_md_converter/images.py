@@ -6,6 +6,7 @@ from pathlib import Path
 
 from obsidian_md_converter.errors import ConversionError
 from obsidian_md_converter.paths import ObsidianPath, OutputPath
+from obsidian_md_converter.scanning import Embed, MarkdownImage, ScannedNote
 
 
 def transform_md_match(match: re.Match, src_dir: Path = None, dest_dir: Path = None):
@@ -40,6 +41,53 @@ def transform_md_match(match: re.Match, src_dir: Path = None, dest_dir: Path = N
         ensure_image_available(src_path, dst_path)
         return f"![{alt_text}]({output_image_url(dst_path, OutputPath._root)})"
     return match.group(0)  # Leave external links and doc links unchanged
+
+
+def rewrite_embed(embed: Embed, src_dir: ObsidianPath, dest_dir: OutputPath) -> str:
+    """
+    The Markdown that replaces a scanned image embed; the image is copied to the output image directory.
+
+    Examples:
+        ![[image.png]]                 -> ![Image](/assets/img/image.png)
+        ![[image.png|200]]             -> ![Image](/assets/img/image.png){:width="200"}
+        ![[image.png|alt text|200x100]] -> ![alt text](/assets/img/image.png){:width="200" height="100"}
+    """
+    relative_img_path = Path(embed.target)
+    ensure_image_available(src_dir / relative_img_path, dest_dir / relative_img_path)
+
+    img_tag = f"![{embed.alt or 'Image'}]({output_image_url(dest_dir / relative_img_path, OutputPath._root)})"
+    if embed.width and embed.height:
+        return f'{img_tag}{{:width="{embed.width}" height="{embed.height}"}}'
+    if embed.width:
+        return f'{img_tag}{{:width="{embed.width}"}}'
+    return img_tag
+
+
+def rewrite_markdown_image(image: MarkdownImage, original: str, src_dir: ObsidianPath, dest_dir: OutputPath) -> str:
+    """
+    The Markdown that replaces a scanned Markdown image: a local image is copied and pointed at by its site URL.
+
+    Examples:
+        ![Figure 1](splay%20results.png) -> ![Figure 1](/assets/img/splay%20results.png)
+        ![logo](https://example.com/logo.png) -> unchanged
+    """
+    if image.url.startswith(('http://', 'https://')):
+        return original
+    img_path = Path(urllib.parse.unquote(image.url))
+    ensure_image_available(src_dir / img_path, dest_dir / img_path)
+    return f"![{image.alt}]({output_image_url(dest_dir / img_path, OutputPath._root)})"
+
+
+def validate_images(note: ScannedNote, obsidian_image_dir: ObsidianPath, source_file: ObsidianPath):
+    """Raise ConversionError listing every image the note references that does not exist."""
+    missing_images = [embed.target for embed in note.embeds if not (obsidian_image_dir / embed.target).exists()]
+    missing_images += [
+        image.url for image in note.markdown_images
+        if not image.url.startswith(('http://', 'https://'))
+        and not (obsidian_image_dir / urllib.parse.unquote(image.url)).exists()
+    ]
+    if missing_images:
+        raise ConversionError(source_file, f"Missing image(s): {', '.join(missing_images)}")
 
 
 def transform_image_ref(full_ref: str, new_parent_dir: OutputPath, root: OutputPath) -> str:

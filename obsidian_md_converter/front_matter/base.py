@@ -1,6 +1,8 @@
 import re
 import yaml
 
+from obsidian_md_converter import scanning
+
 
 class FrontMatter:
     """Parses and manipulates YAML front matter from markdown content.
@@ -25,16 +27,13 @@ class FrontMatter:
         self._parse(content)
 
     def _parse(self, content: str):
-        if not content.startswith('---'):
-            return
-
-        match = re.match(r'^---\s*\n(.*?)\n---\s*\n(.*)$', content, re.DOTALL)
-        if not match:
+        raw, body = scanning.split_front_matter(content)
+        if raw is None:
             return
 
         self._has_front_matter = True
-        self._raw_front_matter = match.group(1)
-        self._body = match.group(2)
+        self._raw_front_matter = raw
+        self._body = body
         self._parse_metadata()
 
     def _parse_metadata(self):

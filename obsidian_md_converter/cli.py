@@ -69,6 +69,7 @@ def slugify(filepath: ObsidianPath) -> str:
         - No special characters or punctuation
         - Spaces converted to hyphens
         - Multiple hyphens collapsed
+        - Leading/trailing hyphens removed
 
     Example:
         "Hello World!.md" -> "hello-world.md"

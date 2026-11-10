@@ -186,3 +186,23 @@ class TestOutputClashes:
         assert site.errors == []
         assert site.has("_notes/alpha/log.md")
         assert site.has("_notes/beta/log.md")
+
+
+class TestEmptyNotes:
+    """A note with nothing below its front matter is a placeholder: not published, and links to it are plain text."""
+
+    def test_empty_note_is_not_published_and_links_to_it_are_text(self, convert):
+        site = convert({
+            "notes/Load Balancer.md": "\n  \n",
+            "notes/Header Only.md": "---\ntags: [x]\n---\n\n",
+            "notes/Hello.md": "Behind a [[Load Balancer]].\n",
+        })
+        assert site.errors == []
+        assert not site.has("_notes/load-balancer.md")
+        assert not site.has("_notes/header-only.md")
+        assert "Behind a Load Balancer." in site.page("_notes/hello.md")
+
+    def test_empty_note_does_not_clash_with_the_real_one(self, convert):
+        site = convert({"notes/Delivery (protocols).md": "Real note\n", "notes/Delivery protocols.md": ""})
+        assert site.errors == []
+        assert "Real note" in site.page("_notes/delivery-protocols.md")

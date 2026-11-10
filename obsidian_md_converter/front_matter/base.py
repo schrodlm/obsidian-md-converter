@@ -1,4 +1,3 @@
-import re
 import yaml
 
 from obsidian_md_converter import scanning

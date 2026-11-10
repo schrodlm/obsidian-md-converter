@@ -2,8 +2,6 @@ import re
 
 from obsidian_md_converter import scanning
 
-_ATX_HEADING_RE = re.compile(r'^#{1,6}[ \t]+(?P<text>.*?)[ \t]*#*[ \t]*$')
-_FENCE_RE = re.compile(r'^[ \t]*(```|~~~)')
 _EXPLICIT_ID_RE = re.compile(r'[ \t]*\{#(?P<id>[^}\s]+)\}$')
 
 _WIKILINK_RE = re.compile(r'!?\[\[(?P<target>[^\]\[|]+)(?:\|(?P<display>[^\]\[]+))?\]\]')
@@ -54,21 +52,6 @@ class HeadingAnchors:
             else:
                 anchor = self._gfm_id(rendered_heading_text(source), id_counts)
             self._anchors.setdefault(heading_key(source), anchor)
-
-    @staticmethod
-    def _heading_sources(body: str) -> list[str]:
-        sources = []
-        in_fence = False
-        for line in body.splitlines():
-            if _FENCE_RE.match(line):
-                in_fence = not in_fence
-                continue
-            if in_fence:
-                continue
-            match = _ATX_HEADING_RE.match(line)
-            if match:
-                sources.append(match.group('text'))
-        return sources
 
     @staticmethod
     def _gfm_id(text: str, id_counts: dict[str, int]) -> str:

@@ -26,12 +26,10 @@ class TestMappingFlags:
     def test_defaults_are_false(self):
         mf = MappingFlags()
         assert mf.transform_links is False
-        assert mf.copy_images is False
 
     def test_explicit_values(self):
-        mf = MappingFlags(transform_links=True, copy_images=True)
+        mf = MappingFlags(transform_links=True)
         assert mf.transform_links is True
-        assert mf.copy_images is True
 
 
 # ---------------------------------------------------------------------------
@@ -77,7 +75,6 @@ class TestMappingFromYaml:
         assert m.source.path == Path(vault / "notes")
         assert m.destination.path == Path(output / "out")
         assert m.flags.transform_links is False
-        assert m.flags.copy_images is False
 
     def test_with_flags(self, configure_roots):
         vault, output = configure_roots
@@ -85,11 +82,9 @@ class TestMappingFromYaml:
             "source": str(vault / "notes"),
             "destination": str(output / "out"),
             "transform_links": True,
-            "copy_images": True,
         }
         m = Mapping.from_yaml(entry)
         assert m.flags.transform_links is True
-        assert m.flags.copy_images is True
 
     def test_missing_source_raises(self):
         entry = {"destination": "/some/path"}
@@ -120,12 +115,10 @@ class TestMappingFromYaml:
         entry = {
             "source": str(vault / "notes"),
             "destination": str(output / "out"),
-            "transform_links": False,
-            "copy_images": 0,
+            "transform_links": 0,
         }
         m = Mapping.from_yaml(entry)
         assert m.flags.transform_links is False
-        assert m.flags.copy_images is False
 
 
 # ---------------------------------------------------------------------------
@@ -138,17 +131,10 @@ class TestMappingFromString:
         assert m.source == "src"
         assert m.destination == "dst"
         assert m.flags.transform_links is False
-        assert m.flags.copy_images is False
 
     def test_with_single_flag(self):
         m = Mapping.from_string("src:dst:transform_links")
         assert m.flags.transform_links is True
-        assert m.flags.copy_images is False
-
-    def test_with_multiple_flags(self):
-        m = Mapping.from_string("src:dst:transform_links:copy_images")
-        assert m.flags.transform_links is True
-        assert m.flags.copy_images is True
 
     def test_missing_destination_raises(self):
         with pytest.raises(ConfigError, match="src:dst"):

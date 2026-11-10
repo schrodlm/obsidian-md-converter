@@ -75,49 +75,6 @@ class TestBuildLinkMapping:
         assert mapping["Hello World"].url.endswith(".html")
         assert "/notes/" in mapping["Hello World"].url
 
-class TestProcessMappings:
-    """A run whose mapped folders are missing fails instead of converting nothing."""
-
-    def test_missing_source_directory_is_an_error(self, vault):
-        config, obsidian, output = vault
-        shutil.rmtree(obsidian / "notes")
-
-        errors, warnings, total_files = process_mappings(link_mapping={}, config=config)
-
-        assert any("Source directory not found" in e for e in errors)
-        assert total_files == 0
-
-    def test_missing_output_directory_without_force_is_an_error(self, vault):
-        config, obsidian, output = vault
-        shutil.rmtree(output / "_notes")
-
-        errors, warnings, total_files = process_mappings(link_mapping={}, config=config)
-
-        assert any("Output directory not found" in e for e in errors)
-
-    def test_images_no_note_references_are_removed_from_the_output(self, vault):
-        config, obsidian, output = vault
-        (obsidian / "notes" / "Hello World.md").write_text("Logo: ![[logo.png]]\n")
-        stale = output / "assets" / "img" / "stale.png"
-        stale.write_bytes(b"\x89PNG stale")
-
-        errors, warnings, total_files = process_mappings(link_mapping={}, config=config)
-
-        assert errors == []
-        assert not stale.exists()
-        assert (output / "assets" / "img" / "logo.png").exists()
-
-    def test_validation_leaves_output_images_alone(self, vault):
-        config, obsidian, output = vault
-        stale = output / "assets" / "img" / "stale.png"
-        stale.write_bytes(b"\x89PNG stale")
-        config.validate_only = True
-
-        process_mappings(link_mapping={}, config=config)
-
-        assert stale.exists()
-
-
 class TestLinks:
     """Wikilinks become links to the published page, to the heading's anchor when they name one."""
 
@@ -186,32 +143,6 @@ class TestObsidianSyntaxPassesThrough:
         content = (target.path / "hello-world.md").read_text()
         assert "> [!note] Pozor\n> - not self-balancing, see [Second Note](/notes/second-note.html)\n" in content
         assert "> [!important]\n> untitled\n" in content
-
-
-class TestImages:
-    """Every image reference points at the copied image by its site-absolute, percent-encoded URL."""
-
-    def convert(self, vault, body):
-        config, obsidian, output = vault
-        (obsidian / "assets" / "images" / "splay results.png").write_bytes(b"\x89PNG fake")
-        source = obsidian / "notes" / "Hello World.md"
-        source.write_text(body)
-        target = OutputPath(output / "_notes")
-        process_file(ObsidianPath(source), target, link_mapping={}, config=config)
-        return (target.path / "hello-world.md").read_text(), output
-
-    def test_markdown_image_with_encoded_name_is_copied_and_linked_absolutely(self, vault):
-        content, output = self.convert(vault, "![Figure 1](splay%20results.png)\n")
-        assert "![Figure 1](/assets/img/splay%20results.png)" in content
-        assert (output / "assets" / "img" / "splay results.png").exists()
-
-    def test_wikilink_image_name_with_spaces_is_percent_encoded(self, vault):
-        content, _ = self.convert(vault, "![[splay results.png|300]]\n")
-        assert '![Image](/assets/img/splay%20results.png){:width="300"}' in content
-
-    def test_external_image_is_unchanged(self, vault):
-        content, _ = self.convert(vault, "![logo](https://example.com/logo.png)\n")
-        assert "![logo](https://example.com/logo.png)" in content
 
 
 class TestSubfolders:

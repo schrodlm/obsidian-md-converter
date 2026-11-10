@@ -43,6 +43,15 @@ class BaseValidatedPath:
         """Return the file system path representation (os.PathLike protocol)."""
         return str(self._path)
 
+    def __eq__(self, other):
+        """Two validated paths are equal when they are of the same kind and point at the same place."""
+        if not isinstance(other, BaseValidatedPath):
+            return NotImplemented
+        return type(self) is type(other) and self._path == other._path
+
+    def __hash__(self):
+        return hash((type(self), self._path))
+
     def __truediv__(self, other):
         """Support the / operator for path concatenation."""
         return self.__class__(self._path / other)

@@ -30,63 +30,6 @@ class NoteLinks:
     warnings: list[str]
 
 
-def transform_md_ref(full_ref: str, links: NoteLinks = None) -> str:
-    """
-    Transform an Obsidian document link to a standard markdown link.
-
-    Args:
-        full_ref: The content inside [[...]]
-        links: The published notes and the current note's headings
-
-    Returns:
-        Markdown link if the note is published, otherwise the display text.
-        A link to a heading the note does not have points at the page and is reported.
-
-    Examples:
-        [[2PC]] -> [2PC](/notes/2pc.html)
-        [[2PC|Two Phase Commit]] -> [Two Phase Commit](/notes/2pc.html)
-        [[tmux#Prefix key]] -> [tmux > Prefix key](/notes/tmux.html#prefix-key)
-        [[#Prefix key]] -> [Prefix key](#prefix-key)
-        [[Unknown Note]] -> Unknown Note
-    """
-    parts = [part.strip() for part in full_ref.split('|')]
-    note_title, _, subpath = parts[0].partition('#')
-    note_title = note_title.strip()
-    # A nested subpath (#H1#H2) names its innermost heading last.
-    heading = subpath.split('#')[-1].strip()
-
-    if len(parts) > 1:
-        display_text = parts[1]
-    elif note_title and heading:
-        display_text = f"{note_title} > {heading}"
-    else:
-        display_text = note_title or heading
-
-    if links is None:
-        return display_text
-
-    if not note_title:
-        anchor = links.own_anchors.anchor_for(heading) if heading else None
-        if anchor is None:
-            links.warnings.append(f"{links.source_name}: [[{full_ref}]] names heading '{heading}', which this note does not have")
-            return display_text
-        return f"[{display_text}](#{anchor})"
-
-    target = links.link_mapping.get(note_title) or links.link_mapping.get(note_title.lower())
-    if target is None:
-        return display_text
-    if not heading:
-        return f"[{display_text}]({target.url})"
-
-    anchor = target.anchors.anchor_for(heading)
-    if anchor is None:
-        links.warnings.append(
-            f"{links.source_name}: [[{full_ref}]] names heading '{heading}', which '{note_title}' does not have; linking to the page"
-        )
-        return f"[{display_text}]({target.url})"
-    return f"[{display_text}]({target.url}#{anchor})"
-
-
 def rewrite_wikilink(link: WikiLink, links: NoteLinks) -> str:
     """
     The Markdown that replaces a scanned wikilink: a link to the published note, or its display text.

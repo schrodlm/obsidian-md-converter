@@ -206,3 +206,25 @@ class TestEmptyNotes:
         site = convert({"notes/Delivery (protocols).md": "Real note\n", "notes/Delivery protocols.md": ""})
         assert site.errors == []
         assert "Real note" in site.page("_notes/delivery-protocols.md")
+
+
+class TestDrafts:
+    """A note marked `draft: true` is not published, and links to it are plain text."""
+
+    def test_draft_is_not_published_and_links_to_it_are_text(self, convert):
+        site = convert({
+            "notes/Work In Progress.md": "---\ndraft: true\n---\nNot ready\n",
+            "notes/Hello.md": "See [[Work In Progress]].\n",
+        })
+        assert site.errors == []
+        assert not site.has("_notes/work-in-progress.md")
+        assert "See Work In Progress." in site.page("_notes/hello.md")
+
+    def test_draft_false_and_quoted_true_are_published(self, convert):
+        site = convert({
+            "notes/Finished.md": "---\ndraft: false\n---\nDone\n",
+            "notes/Quoted.md": '---\ndraft: "true"\n---\nText, not a boolean\n',
+        })
+        assert site.errors == []
+        assert site.has("_notes/finished.md")
+        assert site.has("_notes/quoted.md")

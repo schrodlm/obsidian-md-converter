@@ -65,13 +65,8 @@ class Config:
             )
         )
 
-        # --- Source mappings (optional — can be provided via CLI instead) ---
+        # --- Source mappings (optional) ---
         self.source_mappings : set[Mapping] = set()
-        
-        # overrides take priority in the set 
-        for string_mapping in self._overrides.get('source_mappings') or []:
-            self.source_mappings.add(Mapping.from_string(string_mapping))
-
         for yaml_mapping in self._raw_config.get('source_mappings') or []:
             self.source_mappings.add(Mapping.from_yaml(yaml_mapping))
 

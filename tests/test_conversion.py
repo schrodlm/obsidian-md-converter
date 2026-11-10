@@ -63,6 +63,10 @@ class TestImages:
         site = convert(self.IMAGE | {"notes/Hello.md": "![[splay results.png|300]]\n"})
         assert '![Image](/assets/img/splay%20results.png){:width="300"}' in site.page("_notes/hello.md")
 
+    def test_markdown_image_without_alt_text_is_rewritten(self, convert):
+        site = convert(self.IMAGE | {"notes/Hello.md": "![](splay%20results.png)\n"})
+        assert "![](/assets/img/splay%20results.png)" in site.page("_notes/hello.md")
+
     def test_external_image_is_unchanged(self, convert):
         site = convert({"notes/Hello.md": "![logo](https://example.com/logo.png)\n"})
         assert "![logo](https://example.com/logo.png)" in site.page("_notes/hello.md")
@@ -113,6 +117,19 @@ class TestLinks:
         site = convert({"notes/Hello.md": "## Prefix key\nSee [[#Prefix key]].\n"})
         assert "[Prefix key](#prefix-key)" in site.page("_notes/hello.md")
         assert site.warnings == []
+
+    def test_links_inside_code_are_left_as_written(self, convert):
+        site = convert(self.TARGET | {
+            "notes/Hello.md": "Use `[[Second Note]]` or:\n\n```\nx = arr[[0]]\nsee [[Second Note]]\n```\nand [[Second Note]].\n",
+        })
+        page = site.page("_notes/hello.md")
+        assert "Use `[[Second Note]]` or:" in page
+        assert "x = arr[[0]]\nsee [[Second Note]]\n" in page
+        assert "and [Second Note](/notes/second-note.html)." in page
+
+    def test_links_in_front_matter_are_left_as_written(self, convert):
+        site = convert(self.TARGET | {"notes/Hello.md": "---\nrelated: \"[[Second Note]]\"\n---\nBody\n"})
+        assert 'related: "[[Second Note]]"' in site.page("_notes/hello.md")
 
     def test_link_to_a_missing_note_is_plain_text_without_warning(self, convert):
         site = convert({"notes/Hello.md": "See [[Not Written Yet|later]] and [[Not Written Yet#Part]].\n"})

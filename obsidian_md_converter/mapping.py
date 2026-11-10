@@ -9,7 +9,6 @@ from obsidian_md_converter.utils import slugify_text
 @dataclass
 class MappingFlags():
     transform_links: bool = False
-    copy_images: bool = False
 
 # Class to represent mapping of different subdirectories of root to the output dirs and 
 # provide a way to define specific settings for them

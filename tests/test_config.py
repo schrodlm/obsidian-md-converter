@@ -52,7 +52,6 @@ source_mappings:
   - source: "notes"
     destination: "_notes"
     transform_links: true
-    copy_images: false
 links:
   url_format: "/{{collection}}/{{slug}}/"
 front_matter:

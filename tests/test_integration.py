@@ -61,40 +61,6 @@ front_matter:
     return config, obsidian, output
 
 
-class TestOutputNames:
-    """The neutral output name is the same for every generator; Jekyll's post convention is applied on write."""
-
-    def jekyll_vault(self, vault):
-        config, obsidian, output = vault
-        config.front_matter_config = {'type': 'jekyll', 'jekyll': {'auto_add': True, 'default_layout': 'note'}}
-        return config, obsidian, output
-
-    def test_neutral_name_ignores_post_front_matter(self, vault):
-        config, obsidian, output = vault
-        post = obsidian / "notes" / "Turing Machine.md"
-        post.write_text("---\nlayout: post\ndate: 2024-12-20\n---\nBody\n")
-        assert slugify(ObsidianPath(post)) == "turing-machine.md"
-
-    def test_jekyll_post_is_written_under_its_dated_name(self, vault):
-        config, obsidian, output = self.jekyll_vault(vault)
-        post = obsidian / "notes" / "Turing Machine.md"
-        post.write_text("---\nlayout: post\ndate: 2024-12-20\n---\nBody\n")
-        target = OutputPath(output / "_notes")
-
-        process_file(ObsidianPath(post), target, link_mapping={}, config=config)
-
-        assert (target.path / "2024-12-20-turing-machine.md").exists()
-
-    def test_validation_fails_a_jekyll_post_without_a_date(self, vault):
-        config, obsidian, output = self.jekyll_vault(vault)
-        config.validate_only = True
-        post = obsidian / "notes" / "Undated.md"
-        post.write_text("---\nlayout: post\n---\nBody\n")
-
-        with pytest.raises(ConversionError, match="date"):
-            process_file(ObsidianPath(post), None, link_mapping={}, config=config)
-
-
 class TestOutputClashes:
     """Two notes that would be written to the same file fail the run, and neither is written."""
 

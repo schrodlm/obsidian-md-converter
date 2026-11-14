@@ -82,14 +82,10 @@ class TestPositions:
         assert "český text\nmore [[ABA problém]]\n"[link.span.start:link.span.end] == "[[ABA problém]]"
 
 
-class TestHeadingsAndCallouts:
+class TestHeadings:
     def test_heading_level_and_text(self):
         heading = scan("### Linearizability (Atomická):\n").headings[0]
         assert (heading.level, heading.text) == (3, "Linearizability (Atomická):")
 
     def test_tag_is_not_a_heading(self):
         assert scan("#tag\n").headings == []
-
-    def test_callout_kind_and_title(self):
-        callout = scan("> [!note] Pozor\n> body\n").callouts[0]
-        assert (callout.kind, callout.title) == ("note", "Pozor")

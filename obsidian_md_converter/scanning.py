@@ -6,7 +6,6 @@ from dataclasses import dataclass
 _FRONT_MATTER_RE = re.compile(r'^---\s*\n(?P<raw>.*?)\n---\s*\n', re.DOTALL)
 _FENCE_RE = re.compile(r'^[ \t]*(```|~~~)')
 _HEADING_RE = re.compile(r'^#{1,6}[ \t]+(?P<text>.*?)[ \t]*#*[ \t]*$')
-_CALLOUT_RE = re.compile(r'^>[ \t]*\[!(?P<kind>[^\]]+)\][+-]?[ \t]*(?P<title>.*)$')
 # Inline code may wrap lines but, like a paragraph, never crosses a blank line.
 _INLINE_CODE_RE = re.compile(r'(?P<ticks>`+)(?!`)(?:(?!\n[ \t]*\n).)*?(?<!`)(?P=ticks)(?!`)', re.DOTALL)
 _WIKILINK_RE = re.compile(r'(?P<bang>!?)\[\[(?P<inner>[^\]\[]+)\]\]')
@@ -66,13 +65,6 @@ class MarkdownImage:
 
 
 @dataclass(frozen=True)
-class Callout:
-    span: Span
-    kind: str
-    title: str
-
-
-@dataclass(frozen=True)
 class CodeRegion:
     """A fenced code block or an inline code span; nothing inside it is a structure."""
     span: Span
@@ -92,7 +84,6 @@ class ScannedNote:
     embeds: list[Embed]
     markdown_links: list[MarkdownLink]
     markdown_images: list[MarkdownImage]
-    callouts: list[Callout]
     code: list[CodeRegion]
 
     @property
@@ -122,7 +113,7 @@ def scan_body(body: str, front_matter: str | None = None, body_line: int = 1) ->
     """Record the structures of a note's body, already separated from its front matter."""
     locate = _Locator(body, body_line)
 
-    fenced, headings, callouts = _scan_lines(body, locate)
+    fenced, headings = _scan_lines(body, locate)
     inline_code = [
         CodeRegion(locate(match.start(), match.end()))
         for match in _INLINE_CODE_RE.finditer(body)
@@ -160,14 +151,13 @@ def scan_body(body: str, front_matter: str | None = None, body_line: int = 1) ->
         embeds=embeds,
         markdown_links=markdown_links,
         markdown_images=markdown_images,
-        callouts=callouts,
         code=code,
     )
 
 
-def _scan_lines(body: str, locate: "_Locator") -> tuple[list[CodeRegion], list[Heading], list[Callout]]:
-    """Fenced code blocks, headings and callouts: the structures that occupy whole lines."""
-    fenced, headings, callouts = [], [], []
+def _scan_lines(body: str, locate: "_Locator") -> tuple[list[CodeRegion], list[Heading]]:
+    """Fenced code blocks and headings: the structures that occupy whole lines."""
+    fenced, headings = [], []
     fence_start = None
     offset = 0
     for line in body.splitlines(keepends=True):
@@ -183,14 +173,11 @@ def _scan_lines(body: str, locate: "_Locator") -> tuple[list[CodeRegion], list[H
             if heading:
                 level = len(text) - len(text.lstrip('#'))
                 headings.append(Heading(locate(offset, offset + len(text)), level, heading.group('text')))
-            callout = _CALLOUT_RE.match(text)
-            if callout:
-                callouts.append(Callout(locate(offset, offset + len(text)), callout.group('kind'), callout.group('title').strip()))
         offset += len(line)
     if fence_start is not None:
         # An unclosed fence runs to the end of the note, as in Obsidian.
         fenced.append(CodeRegion(locate(fence_start, len(body))))
-    return fenced, headings, callouts
+    return fenced, headings
 
 
 def _wikilink(span: Span, inner: str) -> WikiLink:

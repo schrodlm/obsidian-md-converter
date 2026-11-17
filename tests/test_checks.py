@@ -91,7 +91,7 @@ class TestFolders:
     def test_missing_vault_folder_is_reported(self):
         index = NoteIndex([], folders=[MappingFolders(mapping("gone"), source_exists=False, destination_exists=False)])
         [problem] = MissingFolder().find(index)
-        assert problem.message == "Source directory not found: /vault/gone"
+        assert problem.message == "Source directory not found: /vault/gone; nothing is published from it"
 
     def test_missing_site_folder_is_reported_only_when_the_vault_folder_exists(self):
         index = NoteIndex([], folders=[
@@ -176,7 +176,7 @@ class TestMissingImage:
         note = indexed_note("Hello", images=[ImageReference("there.png", 2, exists=True),
                                              ImageReference("splay results.png", 5, exists=False)])
         [problem] = find(MissingImage(), note)
-        assert problem.message == "Missing image: splay results.png"
+        assert problem.message == "Missing image: splay results.png; writing its alt text instead"
         assert problem.line == 5
 
 

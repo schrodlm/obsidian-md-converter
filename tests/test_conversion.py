@@ -80,12 +80,17 @@ class TestTabsInFrontMatter:
         assert "tags:\n  - a\n" in site.page("_notes/hello.md")
 
 
-class TestRunFailures:
-    """A run whose mapped folders are missing fails instead of converting nothing."""
+class TestMissingFolders:
+    """A vault folder that is gone publishes nothing and the run goes on; a site folder that is missing stops it without --force."""
 
-    def test_missing_source_folder_is_an_error(self, convert):
-        site = convert({"notes/A.md": "Body\n"}, mappings={"notes": "_notes", "gone": "_gone"})
-        assert any("Source directory not found" in e for e in site.errors)
+    def test_missing_source_folder_warns_and_empties_its_site_folder(self, convert):
+        site = convert({"notes/A.md": "Body\n"}, mappings={"notes": "_notes", "gone": "_gone"},
+                       existing_site={"_gone/old.md": "Old page\n"})
+        assert site.errors == []
+        assert site.warnings == [f"warning: Source directory not found: {site.vault / 'gone'}; nothing is published from it [missing-folder]"]
+        assert site.has("_notes/a.md")
+        assert site.has("_gone")
+        assert not site.has("_gone/old.md")
 
     def test_missing_output_folder_without_force_is_an_error(self, convert):
         site = convert({"notes/A.md": "Body\n"}, mappings={"notes": "_notes"}, force=False)
@@ -121,10 +126,15 @@ class TestImages:
         assert not site.has("assets/img/stale.png")
         assert site.has("assets/img/splay results.png")
 
-    def test_missing_image_is_an_error_on_its_line(self, convert):
+    def test_missing_image_warns_on_its_line(self, convert):
         site = convert(self.IMAGE | {"notes/Hello.md": "![[splay results.png]]\n\n![Figure](gone%20image.png)\n"})
-        assert site.errors == ["notes/Hello.md:3: error: Missing image: gone image.png [missing-image]"]
-        assert not site.has("_notes/hello.md")
+        assert site.errors == []
+        assert site.warnings == ["notes/Hello.md:3: warning: Missing image: gone image.png; writing its alt text instead [missing-image]"]
+
+    def test_missing_image_is_written_as_its_alt_text(self, convert):
+        site = convert({"notes/Hello.md": "A ![[flow.png|Data flow|300]] B ![[gone.png]] C ![Figure](gone.png) D\n"})
+        assert site.page("_notes/hello.md").endswith("A Data flow B  C Figure D\n")
+        assert not site.has("assets/img/flow.png")
 
     def test_validation_leaves_site_images_alone(self, convert):
         site = convert({"notes/Hello.md": "Body\n"}, validate=True, existing_site={"assets/img/stale.png": b"\x89PNG stale"})

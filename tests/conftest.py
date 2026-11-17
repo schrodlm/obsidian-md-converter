@@ -7,8 +7,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from obsidian_md_converter.pipeline import process_mappings
-from obsidian_md_converter.index import build_index
+from obsidian_md_converter.pipeline import run as run_conversion
 from obsidian_md_converter.config import Config
 
 VAULTS = Path(__file__).parent / "vaults"
@@ -25,6 +24,7 @@ DEFAULT_MAPPINGS = {
 @dataclass
 class ConvertedSite:
     root: Path
+    vault: Path
     errors: list[str]
     warnings: list[str]
 
@@ -53,6 +53,7 @@ def convert(tmp_path):
         vault: a fixture vault from tests/vaults/ to start from
         validate: run in --validate mode
         force: create missing output folders (--force)
+        fix: resolve tabs in front matter in the vault's notes (--fix)
         mappings: vault folder -> site folder; only these folders are created, and only when a note is in them
         existing_site: files already in the site before the run (site path -> content)
     """
@@ -62,6 +63,7 @@ def convert(tmp_path):
         vault: str | None = None,
         validate: bool = False,
         force: bool = True,
+        fix: bool = False,
         mappings: dict[str, str] | None = None,
         existing_site: dict[str, str | bytes] | None = None,
     ) -> ConvertedSite:
@@ -91,8 +93,13 @@ def convert(tmp_path):
                 "jekyll": {"auto_add": True, "default_layout": "note"},
             },
         }))
-        config = Config(config_path=config_file, validate_only=validate or None, force_create=force or None)
-        errors, warnings, _ = process_mappings(build_index(config), config)
-        return ConvertedSite(root=site_root, errors=errors, warnings=warnings)
+        config = Config(config_path=config_file, validate_only=validate or None, force_create=force or None, fix_source=fix or None)
+        problems, _ = run_conversion(config)
+        return ConvertedSite(
+            root=site_root,
+            vault=vault_root,
+            errors=[str(problem) for problem in problems if problem.is_error],
+            warnings=[str(problem) for problem in problems if not problem.is_error],
+        )
 
     return run

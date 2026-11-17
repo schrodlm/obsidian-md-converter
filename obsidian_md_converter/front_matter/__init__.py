@@ -2,6 +2,13 @@ from .base import FrontMatter
 from .jekyll import JekyllFrontMatter
 
 
+def front_matter_class(fm_config: dict) -> type[FrontMatter]:
+    """The FrontMatter class (base or subclass) that the front_matter section's `type` names."""
+    if fm_config.get('type', 'base') == 'jekyll':
+        return JekyllFrontMatter
+    return FrontMatter
+
+
 def create_front_matter(content: str, config: dict) -> FrontMatter:
     #TODO: Move this whole mechanism into Config
     # Meaning we should introduce classes like FrontMatterConfig, JekkylFrontMatterConfig.
@@ -16,9 +23,4 @@ def create_front_matter(content: str, config: dict) -> FrontMatter:
         A FrontMatter instance (base or subclass) based on config['front_matter']['type'].
     """
     fm_config = config.get('front_matter', {})
-    fm_type = fm_config.get('type', 'base')
-
-    if fm_type == 'jekyll':
-        return JekyllFrontMatter(content, fm_config)
-
-    return FrontMatter(content, fm_config)
+    return front_matter_class(fm_config)(content, fm_config)

@@ -8,7 +8,8 @@ from obsidian_md_converter.errors import ConversionError
 from obsidian_md_converter.front_matter import create_front_matter
 from obsidian_md_converter.headings import HeadingAnchors
 from obsidian_md_converter.images import validate_images
-from obsidian_md_converter.links import LinkTarget, NoteLinks
+from obsidian_md_converter.index import NoteIndex
+from obsidian_md_converter.links import NoteLinks
 from obsidian_md_converter.mapping import Mapping
 from obsidian_md_converter.naming import slugify
 from obsidian_md_converter.paths import ObsidianPath, OutputPath
@@ -38,7 +39,7 @@ def validate_file_readable(filepath: ObsidianPath):
         raise ConversionError(filepath, f"File not readable: {e}")
 
 
-def process_file(source_filepath: ObsidianPath, target_directory: OutputPath, link_mapping: dict[str, LinkTarget], config: Config):
+def process_file(source_filepath: ObsidianPath, target_directory: OutputPath, index: NoteIndex, config: Config):
     """
     Process or validate a single file.
 
@@ -102,7 +103,7 @@ def process_file(source_filepath: ObsidianPath, target_directory: OutputPath, li
         dst.write_text(fm.serialize(), encoding='utf-8')
 
         links = NoteLinks(
-            link_mapping=link_mapping,
+            index=index,
             own_anchors=HeadingAnchors(fm.body),
             source_name=source_filepath.name,
             warnings=file_warnings,
@@ -116,12 +117,12 @@ def process_file(source_filepath: ObsidianPath, target_directory: OutputPath, li
     return file_warnings
 
 
-def process_mappings(link_mapping: dict[str, LinkTarget], config: Config):
+def process_mappings(index: NoteIndex, config: Config):
     """
     Process all source->destination mappings.
 
     Args:
-        link_mapping: Dictionary mapping note filenames to their paths
+        index: Every published note, for resolving links
         validate_only: If True, only validate without writing
         force_create: If True, create output directories if they don't exist
         fix_source: If True, automatically fix warnings in source files
@@ -176,7 +177,7 @@ def process_mappings(link_mapping: dict[str, LinkTarget], config: Config):
                 file_warnings = process_file(
                     ObsidianPath(source_file),
                     target_directory,
-                    link_mapping,
+                    index,
                     config
                 )
                 warnings.extend(file_warnings)

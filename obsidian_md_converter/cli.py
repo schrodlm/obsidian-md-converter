@@ -5,7 +5,7 @@ import sys
 from pathlib import Path
 
 from obsidian_md_converter.config import Config
-from obsidian_md_converter.links import build_link_mapping
+from obsidian_md_converter.index import build_index
 from obsidian_md_converter.pipeline import process_mappings
 from obsidian_md_converter.utils import enforce_dir
 
@@ -55,13 +55,13 @@ def main():
     else:
         print("Starting the transfer process...")
 
-    # Build link mapping for all notes
-    print("\nBuilding link mapping...")
-    link_mapping = build_link_mapping(config)
-    print(f"Built mapping for {len(link_mapping)} notes")
+    # Index every published note before any page is written
+    print("\nIndexing notes...")
+    index = build_index(config)
+    print(f"Indexed {len(index)} notes")
 
     # Process all files
-    errors, warnings, total_files = process_mappings(link_mapping, config)
+    errors, warnings, total_files = process_mappings(index, config)
 
     # Print summary
     print("\n" + "="*60)

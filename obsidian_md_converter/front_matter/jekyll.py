@@ -43,17 +43,18 @@ class JekyllFrontMatter(FrontMatter):
             self._raw_front_matter += f'\nlayout: {self._default_layout}'
             self._metadata['layout'] = self._default_layout
 
-    def apply_slug_transform(self, slug: str) -> str:
+    @classmethod
+    def apply_slug_transform(cls, slug: str, metadata: dict) -> str:
         """Apply Jekyll post naming convention.
 
         Jekyll's '_posts' collection requires filenames like
         YYYY-MM-DD-title.md. When layout is 'post', this prepends
         the date from front matter to the slug.
         """
-        if self._metadata.get("layout") != "post":
+        if metadata.get("layout") != "post":
             return slug
 
-        date_value = self._metadata.get("date")
+        date_value = metadata.get("date")
         if not date_value:
             raise ValueError("Missing 'date' field for post layout")
 

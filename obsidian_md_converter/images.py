@@ -5,7 +5,7 @@ from pathlib import Path
 
 from obsidian_md_converter.errors import ConversionError
 from obsidian_md_converter.paths import ObsidianPath, OutputPath
-from obsidian_md_converter.scanning import Embed, MarkdownImage, ScannedNote
+from obsidian_md_converter.scanning import Embed, MarkdownImage
 
 
 def rewrite_embed(embed: Embed, src_dir: ObsidianPath, dest_dir: OutputPath) -> str:
@@ -36,23 +36,28 @@ def rewrite_markdown_image(image: MarkdownImage, original: str, src_dir: Obsidia
         ![Figure 1](splay%20results.png) -> ![Figure 1](/assets/img/splay%20results.png)
         ![logo](https://example.com/logo.png) -> unchanged
     """
-    if image.url.startswith(('http://', 'https://')):
+    name = local_image_name(image)
+    if name is None:
         return original
-    img_path = Path(urllib.parse.unquote(image.url))
+    img_path = Path(name)
     ensure_image_available(src_dir / img_path, dest_dir / img_path)
     return f"![{image.alt}]({output_image_url(dest_dir / img_path, OutputPath._root)})"
 
 
-def validate_images(note: ScannedNote, obsidian_image_dir: ObsidianPath, source_file: ObsidianPath):
-    """Raise ConversionError listing every image the note references that does not exist."""
-    missing_images = [embed.target for embed in note.embeds if not (obsidian_image_dir / embed.target).exists()]
-    missing_images += [
-        image.url for image in note.markdown_images
-        if not image.url.startswith(('http://', 'https://'))
-        and not (obsidian_image_dir / urllib.parse.unquote(image.url)).exists()
-    ]
-    if missing_images:
-        raise ConversionError(source_file, f"Missing image(s): {', '.join(missing_images)}")
+def local_image_name(image: Embed | MarkdownImage) -> str | None:
+    """
+    The vault image a reference shows, named relative to the vault's image folder, or None for an image on the web.
+
+    Examples:
+        ![[splay results.png]] -> 'splay results.png'
+        ![Figure 1](splay%20results.png) -> 'splay results.png'
+        ![logo](https://example.com/logo.png) -> None
+    """
+    if isinstance(image, Embed):
+        return image.target
+    if image.url.startswith(('http://', 'https://')):
+        return None
+    return urllib.parse.unquote(image.url)
 
 
 def output_image_url(output_path: OutputPath, root: OutputPath) -> str:

@@ -1,21 +1,17 @@
-"""Converting every mapped folder: select its notes, check them, and write each one to the site."""
+"""A run: index every published note, check them all, and only then write the site."""
 
 import os
 from pathlib import Path
 
+from obsidian_md_converter.checks import checks_for, fix, validate
 from obsidian_md_converter.config import Config
-from obsidian_md_converter.errors import ConversionError
-from obsidian_md_converter.front_matter import create_front_matter
-from obsidian_md_converter.headings import HeadingAnchors
-from obsidian_md_converter.images import validate_images
-from obsidian_md_converter.index import NoteIndex
+from obsidian_md_converter.front_matter import FrontMatter, front_matter_class
+from obsidian_md_converter.index import IndexedNote, NoteIndex, build_index, read_front_matter
 from obsidian_md_converter.links import NoteLinks
 from obsidian_md_converter.mapping import Mapping
-from obsidian_md_converter.naming import slugify
-from obsidian_md_converter.paths import ObsidianPath, OutputPath
-from obsidian_md_converter.publishing import find_output_clashes, get_directory_md_files
+from obsidian_md_converter.paths import OutputPath
+from obsidian_md_converter.problems import Problem
 from obsidian_md_converter.references import rewrite_references
-from obsidian_md_converter import scanning
 
 
 # DANGEROUS method, use with care!
@@ -31,166 +27,70 @@ def remove_contents_of(directory: OutputPath):
             (Path(root) / name).rmdir()
 
 
-def validate_file_readable(filepath: ObsidianPath):
-    """Check if file is readable. Raises ConversionError if not."""
-    try:
-        filepath.read_text(encoding='utf-8')
-    except Exception as e:
-        raise ConversionError(filepath, f"File not readable: {e}")
-
-
-def process_file(source_filepath: ObsidianPath, target_directory: OutputPath, index: NoteIndex, config: Config):
+def run(config: Config) -> tuple[list[Problem], int]:
     """
-    Process or validate a single file.
+    Convert the vault into the site, or with --validate only check it.
 
-    Args:
-        validate_only: If True, only validate without writing. If False, do full conversion.
-        fix_source: If True, automatically fix warnings in the source file.
+    Any error stops the run before the site is touched.
 
     Returns:
-        List of warning messages (may be empty).
+        Tuple of (problems, number of published notes)
     """
-    file_warnings = []
+    print("\nIndexing notes...")
+    index = build_index(config)
+    print(f"Indexed {len(index)} notes")
 
-    # Always validate first
-    validate_file_readable(source_filepath)
-    content = source_filepath.read_text(encoding='utf-8')
-    validate_images(scanning.scan(content), config.obsidian_image_dir, source_filepath)
+    problems = validate(index, checks_for(config))
+    if config.fix_source:
+        problems = fix(problems)
+    if config.validate_only or any(problem.is_error for problem in problems):
+        return problems, len(index)
 
-    # Parse front matter once
-    fm = create_front_matter(content, {'front_matter': config.front_matter_config})
-
-    # Check for tabs in front matter
-    if fm.fix_tabs():
-        if config.fix_source:
-            source_filepath.write_text(fm.serialize(), encoding='utf-8')
-            file_warnings.append(f"{source_filepath.name}: Fixed tabs in front matter YAML")
-        else:
-            file_warnings.append(f"{source_filepath.name}: Tabs in front matter YAML (use --fix to resolve)")
-
-    if fm.yaml_error:
-        raise ConversionError(source_filepath, f"Invalid front matter YAML: {fm.yaml_error}")
-
-    # The site generator's naming convention applies to the neutral name; breaking it fails validation too.
-    try:
-        output_filename = fm.apply_slug_transform(slugify(source_filepath))
-    except ValueError as e:
-        raise ConversionError(filepath=str(source_filepath), reason=str(e))
-
-    # If validate_only, we're done
-    if config.validate_only:
-        return file_warnings
-
-    # Otherwise, do the full conversion
-    original_filename = Path(source_filepath).name
-
-    try:
-        dst = target_directory / output_filename
-        dst.parent.mkdir(parents=True, exist_ok=True)
-
-        # Apply front matter processing
-        #TODO: Move logic to to fm.try_apply()
-        if config.front_matter_enabled:
-            # Determine title from original filename (before slugification)
-            if config.preserve_original_title and original_filename:
-                title = Path(original_filename).stem
-            else:
-                title = Path(output_filename).stem.replace('-', ' ').title()
-
-            fm.ensure(title)
-
-        # Single write to output
-        dst.write_text(fm.serialize(), encoding='utf-8')
-
-        links = NoteLinks(
-            index=index,
-            own_anchors=HeadingAnchors(fm.body),
-            source_name=source_filepath.name,
-            warnings=file_warnings,
-        )
-        rewrite_references(dst, config.obsidian_image_dir, config.output_image_dir, links)
-    except ConversionError as e:
-        if dst.exists():
-            dst.unlink()
-        raise e
-
-    return file_warnings
+    write_site(index, config)
+    return problems, len(index)
 
 
-def process_mappings(index: NoteIndex, config: Config):
-    """
-    Process all source->destination mappings.
-
-    Args:
-        index: Every published note, for resolving links
-        validate_only: If True, only validate without writing
-        force_create: If True, create output directories if they don't exist
-        fix_source: If True, automatically fix warnings in source files
-
-    Returns:
-        Tuple of (errors, warnings, total_files)
-    """
-    errors = []
-    warnings = []
-    total_files = 0
-
+def write_site(index: NoteIndex, config: Config):
+    """Replace the site's published folders and images with a page for every indexed note."""
     # Images are rebuilt each run like pages, so an image no published note references leaves the site.
-    if not config.validate_only and config.output_image_dir.exists():
+    if config.output_image_dir.exists():
         print(f"\nClearing images: {config.output_image_dir}")
         remove_contents_of(config.output_image_dir)
 
+    fm_class = front_matter_class(config.front_matter_config)
     for mapping in config.source_mappings:
         mapping : Mapping
         if not mapping.source.exists():
-            errors.append(f"Source directory not found: {mapping.source}")
             continue
+        if not mapping.destination.exists():
+            print(f"Creating output directory: {mapping.destination}")
+            mapping.destination.mkdir(parents=True, exist_ok=True)
+        print(f"\nProcessing: {mapping.source} -> {mapping.destination}")
+        remove_contents_of(mapping.destination)
 
-        if not config.validate_only:
-            if not mapping.destination.exists():
-                if config.force_create:
-                    print(f"Creating output directory: {mapping.destination}")
-                    mapping.destination.mkdir(parents=True, exist_ok=True)
-                else:
-                    errors.append(f"Output directory not found: {mapping.destination} (use --force to create it)")
-                    continue
-            print(f"\nProcessing: {mapping.source} -> {mapping.destination}")
-            remove_contents_of(mapping.destination)
+        notes = index.notes_in(mapping)
+        for number, note in enumerate(notes, start=1):
+            write_page(note, index, fm_class, config)
+            print(f"Transferred {note.source.name}. [{number}/{len(notes)}]")
+
+
+def write_page(note: IndexedNote, index: NoteIndex, fm_class: type[FrontMatter], config: Config):
+    """Write the page of one checked note, named and linked from what the index holds about it."""
+    dst = note.mapping.destination / note.page_path(fm_class)
+    dst.parent.mkdir(parents=True, exist_ok=True)
+
+    fm = read_front_matter(note.source.read_text(encoding='utf-8'), config.front_matter_config)
+    #TODO: Move logic to to fm.try_apply()
+    if config.front_matter_enabled:
+        # Determine title from original filename (before slugification)
+        if config.preserve_original_title:
+            title = note.source.stem
         else:
-            print(f"\nValidating: {mapping.source}")
+            title = dst.stem.replace('-', ' ').title()
 
-        source_files = get_directory_md_files(mapping.source)
-        print(f"Found {len(source_files)} markdown files")
-        total_files += len(source_files)
+        fm.ensure(title)
 
-        clashes = find_output_clashes(source_files, mapping)
-        for output, clashing_sources in clashes.items():
-            names = " and ".join(f"'{source.name}'" for source in clashing_sources)
-            errors.append(f"{names} would both be written to {output}; rename one of them")
-        clashing_files = {source for clashing_sources in clashes.values() for source in clashing_sources}
+    dst.write_text(fm.serialize(), encoding='utf-8')
 
-        processed = 0
-        for source_file in source_files:
-            if source_file in clashing_files:
-                continue
-            target_directory = None if config.validate_only else mapping.output_directory_for(source_file)
-            try:
-                file_warnings = process_file(
-                    ObsidianPath(source_file),
-                    target_directory,
-                    index,
-                    config
-                )
-                warnings.extend(file_warnings)
-                processed += 1
-                if not config.validate_only:
-                    print(f"Transferred {source_file.name}. [{processed}/{len(source_files)}]")
-            except ConversionError as e:
-                errors.append(f"{source_file.name}: {e.reason}")
-                if not config.validate_only:
-                    print(f"Transfer failed for {e.filepath}")
-                    print(f"Reason: {e.reason}")
-
-        if config.validate_only:
-            print(f"Sucessfully validated {processed}/{len(source_files)} files")
-
-    return (errors, warnings, total_files)
+    links = NoteLinks(index=index, own_anchors=note.anchors)
+    rewrite_references(dst, config.obsidian_image_dir, config.output_image_dir, links)

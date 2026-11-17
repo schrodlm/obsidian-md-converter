@@ -5,8 +5,7 @@ import sys
 from pathlib import Path
 
 from obsidian_md_converter.config import Config
-from obsidian_md_converter.index import build_index
-from obsidian_md_converter.pipeline import process_mappings
+from obsidian_md_converter.pipeline import run
 from obsidian_md_converter.utils import enforce_dir
 
 
@@ -55,18 +54,16 @@ def main():
     else:
         print("Starting the transfer process...")
 
-    # Index every published note before any page is written
-    print("\nIndexing notes...")
-    index = build_index(config)
-    print(f"Indexed {len(index)} notes")
-
-    # Process all files
-    errors, warnings, total_files = process_mappings(index, config)
+    problems, total_files = run(config)
+    errors = [problem for problem in problems if problem.is_error]
+    warnings = [problem for problem in problems if not problem.is_error]
 
     # Print summary
     print("\n" + "="*60)
     if len(errors) > 0:
         print(f"{'Validation' if config.validate_only else 'Transfer'} FAILED")
+        if not config.validate_only:
+            print("   Nothing was written to the site.")
         print(f"   {len(errors)} error(s):")
         for error in errors[:10]:
             print(f"   - {error}")

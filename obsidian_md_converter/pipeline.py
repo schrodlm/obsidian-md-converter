@@ -61,6 +61,10 @@ def write_site(index: NoteIndex, config: Config):
     for mapping in config.source_mappings:
         mapping : Mapping
         if not mapping.source.exists():
+            # The site mirrors the vault: a folder the vault no longer has publishes nothing.
+            if mapping.destination.exists():
+                print(f"\nClearing: {mapping.destination} (its source {mapping.source} is gone)")
+                remove_contents_of(mapping.destination)
             continue
         if not mapping.destination.exists():
             print(f"Creating output directory: {mapping.destination}")

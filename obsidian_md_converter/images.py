@@ -1,9 +1,11 @@
-"""How an image reference is rewritten for the site, and its file copied there."""
+"""How an image reference is rewritten for the site, and its file copied there.
+
+An image missing from the vault is written as its alt text, so the page keeps what the image described.
+"""
 
 import urllib.parse
 from pathlib import Path
 
-from obsidian_md_converter.errors import ConversionError
 from obsidian_md_converter.paths import ObsidianPath, OutputPath
 from obsidian_md_converter.scanning import Embed, MarkdownImage
 
@@ -16,9 +18,11 @@ def rewrite_embed(embed: Embed, src_dir: ObsidianPath, dest_dir: OutputPath) -> 
         ![[image.png]]                 -> ![Image](/assets/img/image.png)
         ![[image.png|200]]             -> ![Image](/assets/img/image.png){:width="200"}
         ![[image.png|alt text|200x100]] -> ![alt text](/assets/img/image.png){:width="200" height="100"}
+        ![[gone.png|Data flow]]        -> Data flow  (when gone.png is not in the vault)
     """
     relative_img_path = Path(embed.target)
-    ensure_image_available(src_dir / relative_img_path, dest_dir / relative_img_path)
+    if not copy_image(src_dir / relative_img_path, dest_dir / relative_img_path):
+        return embed.alt or ''
 
     img_tag = f"![{embed.alt or 'Image'}]({output_image_url(dest_dir / relative_img_path, OutputPath._root)})"
     if embed.width and embed.height:
@@ -35,12 +39,14 @@ def rewrite_markdown_image(image: MarkdownImage, original: str, src_dir: Obsidia
     Examples:
         ![Figure 1](splay%20results.png) -> ![Figure 1](/assets/img/splay%20results.png)
         ![logo](https://example.com/logo.png) -> unchanged
+        ![Figure 1](gone.png) -> Figure 1  (when gone.png is not in the vault)
     """
     name = local_image_name(image)
     if name is None:
         return original
     img_path = Path(name)
-    ensure_image_available(src_dir / img_path, dest_dir / img_path)
+    if not copy_image(src_dir / img_path, dest_dir / img_path):
+        return image.alt
     return f"![{image.alt}]({output_image_url(dest_dir / img_path, OutputPath._root)})"
 
 
@@ -70,10 +76,10 @@ def copy_file(src: Path, dst: Path):
     dst.write_bytes(src.read_bytes())
 
 
-def ensure_image_available(obsidian_img_path: Path, output_img_path: Path) -> bool:
-    """Copy image if needed, returns success status"""
+def copy_image(obsidian_img_path: Path, output_img_path: Path) -> bool:
+    """Copy a vault image to the site; False when the vault does not have it."""
     if not obsidian_img_path.exists():
-        raise ConversionError(obsidian_img_path, "Obsidian image path does not exist.")
+        return False
     if not output_img_path.parent.exists():
         output_img_path.parent.mkdir(parents=True)
     copy_file(obsidian_img_path, output_img_path)

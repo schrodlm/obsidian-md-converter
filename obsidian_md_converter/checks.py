@@ -89,13 +89,13 @@ def fix(problems: list[Problem]) -> list[Problem]:
 
 
 class MissingFolder(Check):
-    """A mapping whose vault folder does not exist."""
-    severity = Severity.ERROR
+    """A mapping whose vault folder does not exist; nothing is published from it, so its site folder is emptied."""
+    severity = Severity.WARNING
 
     def find(self, index: NoteIndex) -> Iterator[Problem]:
         for folders in index.folders:
             if not folders.source_exists:
-                yield Problem(self, f"Source directory not found: {folders.mapping.source}")
+                yield Problem(self, f"Source directory not found: {folders.mapping.source}; nothing is published from it")
 
 
 class MissingOutputFolder(Check):
@@ -185,13 +185,13 @@ class UnnamablePage(NoteCheck):
 
 
 class MissingImage(NoteCheck):
-    """A vault image a note shows that is not in the vault's image folder."""
-    severity = Severity.ERROR
+    """A vault image a note shows that is not in the vault's image folder; the page has its alt text instead."""
+    severity = Severity.WARNING
 
     def find_in(self, note: IndexedNote, index: NoteIndex) -> Iterator[Problem]:
         for image in note.images:
             if not image.exists:
-                yield Problem(self, f"Missing image: {image.name}", note.source, image.line)
+                yield Problem(self, f"Missing image: {image.name}; writing its alt text instead", note.source, image.line)
 
 
 class MissingHeading(NoteCheck):

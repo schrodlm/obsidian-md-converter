@@ -1,5 +1,7 @@
 """Whole conversions of small vaults, grouped by feature."""
 
+import pytest
+
 from obsidian_md_converter.naming import slugify
 from obsidian_md_converter.paths import ObsidianPath
 
@@ -60,6 +62,42 @@ class TestValidation:
         assert site.warnings[0].startswith("notes/Hello.md:3: warning: ")
         assert site.warnings[0].endswith(" [missing-heading]")
         assert site.errors == []
+
+
+class TestStaging:
+    """Pages are written beside the site and replace its folders only once all of them are written."""
+
+    def test_a_failure_while_writing_leaves_the_site_as_it_was(self, convert, monkeypatch, tmp_path):
+        from obsidian_md_converter import pipeline
+        write_page = pipeline.write_page
+
+        def fail_on_second_page(note, *args):
+            if note.source.stem == "B":
+                raise OSError("No space left on device")
+            write_page(note, *args)
+
+        monkeypatch.setattr(pipeline, "write_page", fail_on_second_page)
+        old_site = {"_notes/old.md": "Old page\n", "assets/img/old.png": b"\x89PNG old"}
+        with pytest.raises(OSError):
+            convert({"notes/A.md": "Body\n", "notes/B.md": "Body\n"}, existing_site=old_site)
+
+        site = tmp_path / "site"
+        assert sorted(path.relative_to(site).as_posix() for path in site.rglob("*") if path.is_file()) == [
+            "_notes/old.md", "assets/img/old.png",
+        ]
+        assert [path.name for path in site.parent.iterdir() if "staging" in path.name] == []
+
+    def test_a_run_leaves_no_staging_folder_beside_the_site(self, convert):
+        site = convert({"notes/A.md": "Body\n"})
+        assert [path.name for path in site.root.parent.iterdir() if "staging" in path.name] == []
+
+    def test_a_staging_folder_left_by_a_crashed_run_is_replaced(self, convert, tmp_path):
+        leftover = tmp_path / ".site.staging" / "new" / "_notes" / "stale.md"
+        leftover.parent.mkdir(parents=True)
+        leftover.write_text("Stale\n", encoding="utf-8")
+        site = convert({"notes/A.md": "Body\n"})
+        assert site.has("_notes/a.md")
+        assert not site.has("_notes/stale.md")
 
 
 class TestTabsInFrontMatter:

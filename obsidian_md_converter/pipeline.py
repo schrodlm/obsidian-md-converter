@@ -97,4 +97,4 @@ def write_page(note: IndexedNote, index: NoteIndex, fm_class: type[FrontMatter],
     dst.write_text(fm.serialize(), encoding='utf-8')
 
     links = NoteLinks(index=index, own_anchors=note.anchors)
-    rewrite_references(dst, config.obsidian_image_dir, config.output_image_dir, links)
+    rewrite_references(dst, config.obsidian_image_dir, config.output_image_dir, config.output_image_dir, links)

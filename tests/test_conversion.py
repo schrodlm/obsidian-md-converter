@@ -37,6 +37,49 @@ class TestPageOutput:
         assert not site.has("_notes/broken.md")
 
 
+class TestValidation:
+    """Every check runs before anything is written: an error leaves the site as it was, and --validate reports what a publish would."""
+
+    BROKEN = {"notes/Broken.md": "---\ntags:\n      - a\n  - b\n---\nBody\n"}
+
+    def test_an_error_writes_nothing_and_leaves_the_site_as_it_was(self, convert):
+        site = convert(self.BROKEN | {"notes/Hello.md": "Body\n"},
+                       existing_site={"_notes/old.md": "Old page\n", "assets/img/old.png": b"\x89PNG old"})
+        assert len(site.errors) == 1
+        assert not site.has("_notes/hello.md")
+        assert site.page("_notes/old.md") == "Old page\n"
+        assert site.has("assets/img/old.png")
+
+    def test_validation_reports_a_link_to_a_missing_heading(self, convert):
+        site = convert({"notes/Second Note.md": "## Present\n", "notes/Hello.md": "See [[Second Note#Renamed]].\n"}, validate=True)
+        assert len(site.warnings) == 1
+        assert "Renamed" in site.warnings[0]
+
+    def test_a_problem_names_its_note_line_severity_and_check(self, convert):
+        site = convert({"notes/Second Note.md": "## Present\n", "notes/Hello.md": "Intro\n\nSee [[Second Note#Renamed]].\n"})
+        assert site.warnings[0].startswith("notes/Hello.md:3: warning: ")
+        assert site.warnings[0].endswith(" [missing-heading]")
+        assert site.errors == []
+
+
+class TestTabsInFrontMatter:
+    """Tabs in front matter are a warning; the page is written with spaces, and --fix replaces them in the vault too."""
+
+    TABS = {"notes/Hello.md": "---\ntags:\n\t- a\n---\nBody\n"}
+
+    def test_tabs_warn_and_the_page_is_written_with_spaces(self, convert):
+        site = convert(self.TABS)
+        assert site.warnings == ["notes/Hello.md: warning: Tabs in front matter YAML (use --fix to resolve) [tabs-in-front-matter]"]
+        assert "tags:\n  - a\n" in site.page("_notes/hello.md")
+        assert "\t" in (site.vault / "notes/Hello.md").read_text(encoding="utf-8")
+
+    def test_fix_replaces_the_tabs_in_the_vault(self, convert):
+        site = convert(self.TABS, fix=True)
+        assert site.warnings == ["notes/Hello.md: warning: Fixed tabs in front matter YAML [tabs-in-front-matter]"]
+        assert (site.vault / "notes/Hello.md").read_text(encoding="utf-8") == "---\ntags:\n  - a\n---\nBody\n"
+        assert "tags:\n  - a\n" in site.page("_notes/hello.md")
+
+
 class TestRunFailures:
     """A run whose mapped folders are missing fails instead of converting nothing."""
 
@@ -77,6 +120,11 @@ class TestImages:
         assert site.errors == []
         assert not site.has("assets/img/stale.png")
         assert site.has("assets/img/splay results.png")
+
+    def test_missing_image_is_an_error_on_its_line(self, convert):
+        site = convert(self.IMAGE | {"notes/Hello.md": "![[splay results.png]]\n\n![Figure](gone%20image.png)\n"})
+        assert site.errors == ["notes/Hello.md:3: error: Missing image: gone image.png [missing-image]"]
+        assert not site.has("_notes/hello.md")
 
     def test_validation_leaves_site_images_alone(self, convert):
         site = convert({"notes/Hello.md": "Body\n"}, validate=True, existing_site={"assets/img/stale.png": b"\x89PNG stale"})
@@ -188,11 +236,11 @@ class TestOutputClashes:
 
     CLASHING = {"notes/Délivery (protocols).md": "Real note\n", "notes/delivery protocols.md": "Leftover\n"}
 
-    def test_clashing_notes_are_an_error_and_neither_is_written(self, convert):
+    def test_clashing_notes_are_an_error_and_nothing_is_written(self, convert):
         site = convert(self.CLASHING | {"notes/Hello World.md": "Body\n"})
         assert len([e for e in site.errors if "would both be written to delivery-protocols.md" in e]) == 1
         assert not site.has("_notes/delivery-protocols.md")
-        assert site.has("_notes/hello-world.md")
+        assert not site.has("_notes/hello-world.md")
 
     def test_validation_reports_clashes(self, convert):
         site = convert(self.CLASHING, validate=True)

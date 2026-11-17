@@ -92,9 +92,15 @@ The checks a run makes before writing anything. Run on their own, they are what
 the pre-commit hook does.
 _Avoid_: linting, verification
 
+**Check**:
+One kind of problem, and how validation finds it. Its name, such as
+`missing-heading`, is printed with every problem it finds.
+_Avoid_: rule, lint
+
 **Problem**:
-One thing validation found, with its note, line and severity: an error stops
-the run, a warning does not.
+One thing a check found, with its note, line and severity. An error leaves no
+sensible page to write and stops the run. A warning still leaves one, and never
+stops it.
 _Avoid_: issue, diagnostic
 
 **Export**:

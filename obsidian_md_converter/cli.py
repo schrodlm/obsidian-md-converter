@@ -6,6 +6,7 @@ from pathlib import Path
 
 from obsidian_md_converter.config import Config
 from obsidian_md_converter.pipeline import run
+from obsidian_md_converter.problems import Problem
 from obsidian_md_converter.utils import enforce_dir
 
 
@@ -55,33 +56,37 @@ def main():
         print("Starting the transfer process...")
 
     problems, total_files = run(config)
-    errors = [problem for problem in problems if problem.is_error]
-    warnings = [problem for problem in problems if not problem.is_error]
-
-    # Print summary
     print("\n" + "="*60)
-    if len(errors) > 0:
-        print(f"{'Validation' if config.validate_only else 'Transfer'} FAILED")
-        if not config.validate_only:
-            print("   Nothing was written to the site.")
-        print(f"   {len(errors)} error(s):")
-        for error in errors[:10]:
-            print(f"   - {error}")
-        if len(errors) > 10:
-            print(f"   ... and {len(errors) - 10} more")
-        if len(warnings) > 0:
-            print(f"   {len(warnings)} warning(s)")
-        sys.exit(1)
-    elif len(warnings) > 0:
-        print(f"{'Validation' if config.validate_only else 'Transfer'} completed with warnings")
-        for warning in warnings:
-            print(f"   - {warning}")
-        print(f"   {total_files} files processed")
-        sys.exit(0)
-    else:
-        print(f"{'Validation' if config.validate_only else 'Transfer'} completed successfully!")
-        print(f"   {total_files} files processed")
-        sys.exit(0)
+    lines, exit_code = report(problems, total_files, config.validate_only)
+    print("\n".join(lines))
+    sys.exit(exit_code)
+
+
+def report(problems: list[Problem], total_files: int, validate_only: bool) -> tuple[list[str], int]:
+    """
+    What a run prints, and its exit code: like a compiler, every problem in vault order, then the counts.
+
+    Example:
+        notes/Hello.md:3: warning: Missing image: gone.png; writing its alt text instead [missing-image]
+        Transfer completed: 0 error(s), 1 warning(s), 12 files processed
+    """
+    errors = sum(problem.is_error for problem in problems)
+    counts = f"{errors} error(s), {len(problems) - errors} warning(s)"
+    mode = 'Validation' if validate_only else 'Transfer'
+
+    lines = [str(problem) for problem in sorted(problems, key=_location)]
+    if not errors:
+        return lines + [f"{mode} completed: {counts}, {total_files} files processed"], 0
+    lines.append(f"{mode} FAILED: {counts}")
+    if not validate_only:
+        lines.append("Nothing was written to the site.")
+    return lines, 1
+
+
+def _location(problem: Problem) -> tuple:
+    """Problems about the whole run first, then by note and line; one place keeps the order its checks ran in."""
+    return problem.note is not None, str(problem.note or ''), problem.line or 0
+
 
 if __name__ == "__main__":
     main()

@@ -8,7 +8,7 @@ import pytest
 import yaml
 
 from obsidian_md_converter.pipeline import process_mappings
-from obsidian_md_converter.links import build_link_mapping
+from obsidian_md_converter.index import build_index
 from obsidian_md_converter.config import Config
 
 VAULTS = Path(__file__).parent / "vaults"
@@ -92,7 +92,7 @@ def convert(tmp_path):
             },
         }))
         config = Config(config_path=config_file, validate_only=validate or None, force_create=force or None)
-        errors, warnings, _ = process_mappings(build_link_mapping(config), config)
+        errors, warnings, _ = process_mappings(build_index(config), config)
         return ConvertedSite(root=site_root, errors=errors, warnings=warnings)
 
     return run

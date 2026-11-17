@@ -10,9 +10,9 @@ from obsidian_md_converter.paths import ObsidianPath, OutputPath
 from obsidian_md_converter.scanning import Embed, MarkdownImage
 
 
-def rewrite_embed(embed: Embed, src_dir: ObsidianPath, dest_dir: OutputPath) -> str:
+def rewrite_embed(embed: Embed, src_dir: ObsidianPath, dest_dir: OutputPath, copy_dir: Path) -> str:
     """
-    The Markdown that replaces a scanned image embed; the image is copied to the output image directory.
+    The Markdown that replaces a scanned image embed, pointing at the image in `dest_dir`; the image is copied into `copy_dir`.
 
     Examples:
         ![[image.png]]                 -> ![Image](/assets/img/image.png)
@@ -21,7 +21,7 @@ def rewrite_embed(embed: Embed, src_dir: ObsidianPath, dest_dir: OutputPath) -> 
         ![[gone.png|Data flow]]        -> Data flow  (when gone.png is not in the vault)
     """
     relative_img_path = Path(embed.target)
-    if not copy_image(src_dir / relative_img_path, dest_dir / relative_img_path):
+    if not copy_image(src_dir / relative_img_path, copy_dir / relative_img_path):
         return embed.alt or ''
 
     img_tag = f"![{embed.alt or 'Image'}]({output_image_url(dest_dir / relative_img_path, OutputPath._root)})"
@@ -32,9 +32,10 @@ def rewrite_embed(embed: Embed, src_dir: ObsidianPath, dest_dir: OutputPath) -> 
     return img_tag
 
 
-def rewrite_markdown_image(image: MarkdownImage, original: str, src_dir: ObsidianPath, dest_dir: OutputPath) -> str:
+def rewrite_markdown_image(image: MarkdownImage, original: str, src_dir: ObsidianPath, dest_dir: OutputPath,
+                           copy_dir: Path) -> str:
     """
-    The Markdown that replaces a scanned Markdown image: a local image is copied and pointed at by its site URL.
+    The Markdown that replaces a scanned Markdown image: a local image is copied into `copy_dir` and pointed at by its URL in `dest_dir`.
 
     Examples:
         ![Figure 1](splay%20results.png) -> ![Figure 1](/assets/img/splay%20results.png)
@@ -45,7 +46,7 @@ def rewrite_markdown_image(image: MarkdownImage, original: str, src_dir: Obsidia
     if name is None:
         return original
     img_path = Path(name)
-    if not copy_image(src_dir / img_path, dest_dir / img_path):
+    if not copy_image(src_dir / img_path, copy_dir / img_path):
         return image.alt
     return f"![{image.alt}]({output_image_url(dest_dir / img_path, OutputPath._root)})"
 

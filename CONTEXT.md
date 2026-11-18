@@ -114,9 +114,11 @@ One named destination in the config: a site, the processor its pages are written
 _Avoid_: target, output (for the destination)
 
 **Processor**:
-What expresses a run's pages for one kind of site, such as Jekyll or normalized
-Markdown: their paths, addresses, anchors, the front matter fields the site
-needs (such as a Jekyll layout) and syntax.
+How one kind of site, such as Jekyll or normalized Markdown, expects a run's
+pages to be written. The core resolves every note, heading and image, and asks
+the processor only where sites differ: a page's path and address, its heading
+anchors, the front matter fields the site needs (such as a Jekyll layout), and
+the Markdown text of structures such as images. It never reads the vault.
 _Avoid_: target, converter, renderer, exporter
 
 **Normalized Markdown**:

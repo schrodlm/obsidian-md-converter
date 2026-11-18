@@ -4,9 +4,14 @@ from pathlib import Path
 
 class Processor(ABC):
     """
-    How a run's pages are expressed for one kind of site, such as Jekyll.
+    How one kind of site, such as Jekyll, expects a run's pages to be written.
 
-    Its methods only format what the core has already resolved: they never parse, look anything up or touch the disk.
+    The core reads the vault, resolves every note, heading and image, checks them and writes the pages. Wherever
+    sites differ, it asks the processor, which answers from resolved values with plain values:
+      - a page's name and address on the site: page_path, address, anchor_ids
+      - the front matter fields the site needs: front_matter_defaults
+
+    It never parses, looks anything up or touches the disk; what the core hands it is all it knows.
     """
 
     @abstractmethod

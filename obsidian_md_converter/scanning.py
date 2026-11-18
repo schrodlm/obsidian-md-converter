@@ -181,6 +181,14 @@ def _scan_lines(body: str, locate: "_Locator") -> tuple[list[CodeRegion], list[H
 
 
 def _wikilink(span: Span, inner: str) -> WikiLink:
+    """
+    A wikilink, from the text between its brackets.
+
+    Examples:
+        'tmux#Prefix key|the prefix' -> note 'tmux', heading 'Prefix key', display 'the prefix'
+        'MFF#Exams#Dates'            -> note 'MFF', heading 'Dates', no display
+        '#Prefix key'                -> no note: a heading of the linking note itself
+    """
     parts = [part.strip() for part in inner.split('|')]
     note, _, subpath = parts[0].partition('#')
     # A nested subpath (#H1#H2) names its innermost heading last.
@@ -190,6 +198,13 @@ def _wikilink(span: Span, inner: str) -> WikiLink:
 
 
 def _embed(span: Span, inner: str) -> Embed:
+    """
+    An embed, from the text between its brackets: a part that is a size is the size, any other part the alt text.
+
+    Examples:
+        'a.png|Flow|200x100' -> target 'a.png', alt 'Flow', width '200', height '100'
+        'a.png|200'          -> target 'a.png', no alt, width '200'
+    """
     parts = [part.strip() for part in inner.split('|')]
     alt = width = height = None
     for part in parts[1:]:

@@ -15,13 +15,8 @@ def rewrite_embed(embed: Embed, src_dir: ObsidianPath, dest_dir: OutputPath, cop
                   processor: Processor) -> str:
     """
     The Markdown that replaces a scanned image embed: the image is copied into `copy_dir` and handed to the processor,
-    pointed at in `dest_dir`; an image missing from the vault becomes its alt text.
-
-    Examples, as the image the processor writes, or the text written instead:
-        ![[image.png]]                  -> PageImage('Image', '/assets/img/image.png')
-        ![[image.png|200]]              -> PageImage('Image', '/assets/img/image.png', '200')
-        ![[image.png|alt text|200x100]] -> PageImage('alt text', '/assets/img/image.png', '200', '100')
-        ![[gone.png|Data flow]]         -> 'Data flow'  (when gone.png is not in the vault)
+    pointed at in `dest_dir`, with 'Image' as its alt text when the embed gives none. An image missing from the vault
+    becomes its alt text.
     """
     relative_img_path = Path(embed.target)
     if not copy_image(src_dir / relative_img_path, copy_dir / relative_img_path):
@@ -35,12 +30,8 @@ def rewrite_markdown_image(image: MarkdownImage, original: str, src_dir: Obsidia
                            copy_dir: Path, processor: Processor) -> str:
     """
     The Markdown that replaces a scanned Markdown image: a local image is copied into `copy_dir` and handed to the
-    processor, pointed at in `dest_dir`; an image on the web is left as written.
-
-    Examples, as the image the processor writes, or the text written instead:
-        ![Figure 1](splay%20results.png)      -> PageImage('Figure 1', '/assets/img/splay%20results.png')
-        ![logo](https://example.com/logo.png) -> unchanged
-        ![Figure 1](gone.png)                 -> 'Figure 1'  (when gone.png is not in the vault)
+    processor, pointed at in `dest_dir`; an image on the web is left as written. An image missing from the vault
+    becomes its alt text.
     """
     name = local_image_name(image)
     if name is None:
@@ -68,7 +59,11 @@ def local_image_name(image: Embed | MarkdownImage) -> str | None:
 
 
 def output_image_url(output_path: OutputPath, root: OutputPath) -> str:
-    """The site-absolute URL of a copied image, percent-encoded so names with spaces stay one link target."""
+    """
+    The site-absolute URL of a copied image, percent-encoded so names with spaces stay one link target.
+
+    Example: <output root>/assets/img/splay results.png -> '/assets/img/splay%20results.png'
+    """
     return '/' + urllib.parse.quote(str(Path(output_path).relative_to(root)))
 
 

@@ -49,3 +49,11 @@ class TestJekyllAnchorIds:
 
     def test_letters_with_diacritics_are_kept(self):
         assert self.JEKYLL.anchor_ids(["Totální uspořádání"]) == ["totální-uspořádání"]
+
+
+class TestJekyllFrontMatterDefaults:
+    def test_default_layout_is_the_only_default(self):
+        assert JekyllProcessor("/{collection}/{slug}.html", default_layout="note").front_matter_defaults() == {"layout": "note"}
+
+    def test_no_default_layout_gives_no_defaults(self):
+        assert JekyllProcessor("/{collection}/{slug}.html").front_matter_defaults() == {}

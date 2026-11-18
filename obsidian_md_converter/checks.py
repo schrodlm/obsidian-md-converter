@@ -10,10 +10,11 @@ from collections.abc import Iterator
 from pathlib import Path
 
 from obsidian_md_converter.config import Config
-from obsidian_md_converter.front_matter import FrontMatter, JekyllFrontMatter
+from obsidian_md_converter.front_matter import FrontMatter
 from obsidian_md_converter.index import IndexedNote, NoteIndex
 from obsidian_md_converter.mapping import Mapping
 from obsidian_md_converter.problems import Problem, Severity
+from obsidian_md_converter.processors import JekyllProcessor
 from obsidian_md_converter.scanning import WikiLink
 
 
@@ -72,7 +73,7 @@ def checks_for(config: Config) -> list[Check]:
         Clash(),
         TabsInFrontMatter(),
         InvalidFrontMatter(),
-        UnnamablePage(JekyllFrontMatter),
+        UnnamablePage(JekyllProcessor),
         MissingImage(),
         MissingHeading(),
     ]
@@ -171,15 +172,15 @@ class UnnamablePage(NoteCheck):
     """A page the site generator cannot name from the note's front matter, such as a Jekyll post without a date."""
     severity = Severity.ERROR
 
-    def __init__(self, front_matter_class: type[FrontMatter], severity: Severity | None = None):
+    def __init__(self, processor: type[JekyllProcessor], severity: Severity | None = None):
         super().__init__(severity)
-        self.front_matter_class = front_matter_class
+        self.processor = processor
 
     def find_in(self, note: IndexedNote, index: NoteIndex) -> Iterator[Problem]:
         if note.page is None:
             return
         try:
-            note.page_path(self.front_matter_class)
+            note.page_path(self.processor)
         except ValueError as e:
             yield Problem(self, str(e), note.source)
 

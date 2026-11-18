@@ -59,15 +59,6 @@ class FrontMatter:
         # The mark counts from the first front matter line; the file has the opening '---' above it.
         return f"{problem} (line {mark.line + 2})"
 
-    @classmethod
-    def apply_slug_transform(cls, slug: str, metadata: dict) -> str:
-        """Apply the site generator's file-naming convention to a neutral output name, given a note's front matter values; none by default.
-
-        Raises:
-            ValueError: if the front matter lacks what the convention needs.
-        """
-        return slug
-    
     @property
     def has_front_matter(self) -> bool:
         return self._has_front_matter

@@ -74,7 +74,7 @@ class TestJekyllEnsure:
     def test_note_without_front_matter_gets_layout_and_title(self):
         fm = JekyllFrontMatter('Body\n', self.AUTO_ADD)
         fm.ensure("2PC")
-        assert fm.metadata == {"layout": "note", "title": "2PC"}
+        assert fm.serialize() == '---\ntitle: "2PC"\nlayout: "note"\n---\n\nBody\n'
 
     def test_layout_is_not_added_without_auto_add(self):
         fm = JekyllFrontMatter('---\ntags: []\n---\nBody\n', {'jekyll': {'auto_add': False}})

@@ -33,6 +33,10 @@ class TestPageOutput:
         assert page.startswith("---\n")
         assert 'title: "ABA problém"' in page
 
+    def test_post_is_titled_with_its_note_name_not_its_dated_name(self, convert):
+        site = convert({"publish/posts/Turing Machine.md": "---\nlayout: post\ndate: 2024-12-20\n---\nBody\n"})
+        assert 'title: "Turing Machine"' in site.page("_posts/2024-12-20-turing-machine.md")
+
     def test_invalid_front_matter_fails_the_note_and_writes_nothing(self, convert):
         site = convert({"notes/Broken.md": "---\ntags:\n      - a\n  - b\n---\nBody\n"})
         assert any("Broken.md" in e and "Invalid front matter YAML" in e for e in site.errors)

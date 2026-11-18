@@ -1,0 +1,21 @@
+skinparam shadowing false
+skinparam defaultFontName sans-serif
+skinparam defaultFontSize 12
+skinparam dpi 140
+skinparam backgroundColor #FFFFFF
+skinparam classAttributeIconSize 0
+skinparam class {
+  BackgroundColor #F5F5F5
+  BorderColor #888888
+  ArrowColor #888888
+}
+skinparam package {
+  BorderColor #888888
+  BackgroundColor #FFFFFF
+}
+skinparam note {
+  BackgroundColor #FFFBE6
+  BorderColor #C8B560
+}
+hide empty members
+hide circle

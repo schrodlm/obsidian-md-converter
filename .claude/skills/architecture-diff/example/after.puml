@@ -1,0 +1,115 @@
+@startuml
+!include style.iuml
+title After (planned PR): blue = new or changed, proposed names
+
+package "core: run" {
+  class pipeline <<module>> {
+    +run(config) : tuple
+    <color:#0050C0>+write_page(note, index, processor, config, staging)</color>
+  }
+  class Config {
+    +front_matter_config : dict
+  }
+}
+
+package "core: index" {
+  class index <<module>> {
+    <color:#0050C0>+build_index(config, processor) : NoteIndex</color>
+  }
+  class IndexedNote {
+    +page : Page | None
+    +anchors : HeadingAnchors
+    <color:#0050C0>+page_path(processor) : Path</color>
+  }
+  class HeadingAnchors {
+    <color:#0050C0>+HeadingAnchors(body, anchor_ids)</color>
+    +anchor_for(heading) : str | None
+  }
+}
+
+package "core: validate" {
+  class checks <<module>> {
+    <color:#0050C0>+checks_for(config, processor) : list[Check]</color>
+  }
+  class UnnamablePage {
+    <color:#0050C0>+processor : Processor</color>
+  }
+}
+
+package "core: write" {
+  class references <<module>> {
+    <color:#0050C0>+rewrite_references(filepath, ..., links, processor)</color>
+  }
+  class links <<module>> {
+    <color:#0050C0>+rewrite_wikilink(link, links, processor) : str</color>
+  }
+  class images <<module>> {
+    <color:#0050C0>+rewrite_embed(embed, ..., processor) : str</color>
+  }
+  class FrontMatter {
+    +ensure(title)
+    +serialize() : str
+  }
+}
+
+package "processors (new)" #EEF4FF {
+  class processor_for <<function>> #E0ECFF {
+    +processor_for(config) : Processor
+  }
+  interface Processor #E0ECFF {
+    +page_path(neutral_path, front_matter) : Path
+    +address(neutral_path, mapping) : str
+    +anchor_ids(heading_texts) : list[str]
+    +front_matter(fm, title) : str
+    +link(text, address, anchor) : str
+    +image(alt, url, width, height) : str
+    +checks() : list[Check]
+  }
+  class JekyllProcessor #E0ECFF {
+    +url_format : str
+    +default_layout : str
+    +auto_add : bool
+  }
+  class NormalizedMarkdown <<next PR, #13>>
+  class blocks <<module>> #E0ECFF {
+    +gfm_ids(heading_texts) : list[str]
+  }
+}
+
+note right of JekyllProcessor
+  Moved here:
+  page_path    <- JekyllFrontMatter.apply_slug_transform
+  address      <- index._page + Config.url_format
+  anchor_ids   <- HeadingAnchors._gfm_id (via blocks)
+  front_matter <- JekyllFrontMatter.ensure
+  image        <- images.rewrite_embed  {:width=...}
+  link         <- links.rewrite_wikilink  [text](url#anchor)
+end note
+
+Processor <|.. JekyllProcessor
+Processor <|.. NormalizedMarkdown
+JekyllProcessor ..> blocks
+JekyllProcessor -[dashed,norank]-> FrontMatter
+processor_for ..> JekyllProcessor : creates
+IndexedNote *-- HeadingAnchors
+pipeline -[dashed,norank]-> index
+pipeline -[dashed,norank]-> checks
+pipeline -[dashed,norank]-> references
+pipeline -[dashed,norank]-> processor_for
+index ..> IndexedNote : creates
+index -[dashed,norank]-> Processor : address, anchor_ids
+checks ..> UnnamablePage : creates
+UnnamablePage -[dashed,norank]-> Processor : page_path
+references ..> links
+references ..> images
+links -[dashed,norank]-> HeadingAnchors : anchor_for
+links -[dashed,norank]-> Processor : link
+images -[dashed,norank]-> Processor : image
+' Layout only: run on top; index, validate, write below it, left to right; a new package after them.
+pipeline -[hidden]-> index
+pipeline -[hidden]-> checks
+pipeline -[hidden]-> references
+index -[hidden]right-> checks
+checks -[hidden]right-> references
+references -[hidden]-> Processor
+@enduml

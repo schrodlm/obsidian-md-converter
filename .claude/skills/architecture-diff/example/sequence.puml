@@ -1,0 +1,45 @@
+@startuml
+!include style.iuml
+skinparam sequence {
+  ParticipantBackgroundColor #F5F5F5
+  ParticipantBorderColor #888888
+  LifeLineBorderColor #888888
+  ArrowColor #888888
+  GroupBorderColor #888888
+  GroupBackgroundColor #F5F5F5
+}
+hide footbox
+autonumber
+participant cli
+participant pipeline
+participant index
+participant checks
+participant "processor : Processor" as P #E0ECFF
+participant references
+participant Staging
+
+cli -> pipeline : run(config)
+pipeline -> pipeline : processor_for(config)
+pipeline -> index : build_index(config, processor)
+loop every published note
+  index -> P : address(neutral_path, mapping)
+  index -> P : anchor_ids(heading_texts)
+end
+index --> pipeline : NoteIndex
+pipeline -> checks : validate(index, checks_for(config, processor))
+checks -> P : page_path(...)  [UnnamablePage]
+checks --> pipeline : problems
+alt any error, or --validate
+  pipeline --> cli : problems (site untouched)
+else
+  loop every indexed note
+    pipeline -> P : page_path(neutral_path, front_matter)
+    pipeline -> P : front_matter(fm, title)
+    pipeline -> references : rewrite_references(..., processor)
+    references -> P : link(text, address, anchor)
+    references -> P : image(alt, url, width, height)
+  end
+  pipeline -> Staging : swap()
+  pipeline --> cli : problems
+end
+@enduml

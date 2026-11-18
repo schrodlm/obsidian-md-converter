@@ -1,8 +1,11 @@
 import datetime
+import re
 from pathlib import Path
 
 from obsidian_md_converter.processors.base import Processor
 from obsidian_md_converter.utils import parse_date
+
+_GFM_NON_WORD_RE = re.compile(r'[^\w\- \t]')
 
 
 class JekyllProcessor(Processor):
@@ -44,3 +47,10 @@ class JekyllProcessor(Processor):
         """
         collection = site_folder.lstrip('_')
         return self.url_format.format(collection=collection, slug=neutral_path.with_suffix('').as_posix())
+
+    @staticmethod
+    def _gfm_id(text: str, id_counts: dict[str, int]) -> str:
+        base = _GFM_NON_WORD_RE.sub('', text.lower()).replace(' ', '-').replace('\t', '-')
+        count = id_counts.get(base, -1) + 1
+        id_counts[base] = count
+        return f"{base}-{count}" if count else base

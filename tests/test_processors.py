@@ -7,6 +7,7 @@ import pytest
 from obsidian_md_converter.errors import ConfigError
 from obsidian_md_converter.front_matter import FrontMatter
 from obsidian_md_converter.processors import JekyllProcessor, processor_for
+from obsidian_md_converter.processors.base import PageImage
 
 
 class TestJekyllPostSlug:
@@ -61,6 +62,25 @@ class TestJekyllFrontMatterDefaults:
 
     def test_no_default_layout_gives_no_defaults(self):
         assert JekyllProcessor("/{collection}/{slug}.html").front_matter_defaults() == {}
+
+
+class TestJekyllImageMarkdown:
+    JEKYLL = JekyllProcessor("/{collection}/{slug}.html")
+
+    def test_image_without_a_size_is_plain_markdown(self):
+        assert self.JEKYLL.image_markdown(PageImage("Fig", "/assets/img/b%20c.png")) == "![Fig](/assets/img/b%20c.png)"
+
+    def test_width_is_a_kramdown_attribute(self):
+        image = PageImage("Image", "/assets/img/a.png", width="200")
+        assert self.JEKYLL.image_markdown(image) == '![Image](/assets/img/a.png){:width="200"}'
+
+    def test_width_and_height_are_kramdown_attributes(self):
+        image = PageImage("Flow", "/assets/img/a.png", width="200", height="100")
+        assert self.JEKYLL.image_markdown(image) == '![Flow](/assets/img/a.png){:width="200" height="100"}'
+
+    def test_height_without_a_width_is_not_written(self):
+        image = PageImage("Flow", "/assets/img/a.png", height="100")
+        assert self.JEKYLL.image_markdown(image) == "![Flow](/assets/img/a.png)"
 
 
 class TestProcessorFor:

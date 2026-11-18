@@ -1,6 +1,15 @@
+import json
+
 import yaml
 
 from obsidian_md_converter import scanning
+
+
+def yaml_fields(fields: dict[str, str]) -> str:
+    """Fields the converter adds, as front matter lines. Each value is written as a double-quoted YAML string and
+    escaped, so any text stays valid YAML. Example: {'title': 'Say "hi"'} -> 'title: "Say \\"hi\\""'"""
+    # A JSON string is a valid double-quoted YAML string.
+    return '\n'.join(f'{key}: {json.dumps(value, ensure_ascii=False)}' for key, value in fields.items())
 
 
 class FrontMatter:
@@ -105,7 +114,7 @@ class FrontMatter:
         """
         if 'title' in self._metadata:
             return
-        self._raw_front_matter += f'\ntitle: "{title}"'
+        self._raw_front_matter += '\n' + yaml_fields({'title': title})
         self._metadata['title'] = title
 
     def _create_front_matter(self, title: str):
@@ -114,7 +123,7 @@ class FrontMatter:
         Subclasses can override to add additional fields (e.g. layout).
         """
         self._has_front_matter = True
-        self._raw_front_matter = f'title: "{title}"'
+        self._raw_front_matter = yaml_fields({'title': title})
         self._metadata = {'title': title}
         if not self._body.startswith('\n'):
             self._body = '\n' + self._body

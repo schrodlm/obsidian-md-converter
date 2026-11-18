@@ -1,4 +1,4 @@
-from .base import FrontMatter
+from .base import FrontMatter, yaml_fields
 
 
 class JekyllFrontMatter(FrontMatter):
@@ -25,7 +25,7 @@ class JekyllFrontMatter(FrontMatter):
         Overrides base to include a Jekyll layout field.
         """
         self._has_front_matter = True
-        self._raw_front_matter = f'layout: {self._default_layout}\ntitle: "{title}"'
+        self._raw_front_matter = yaml_fields({'layout': self._default_layout, 'title': title})
         self._metadata = {'layout': self._default_layout, 'title': title}
         if not self._body.startswith('\n'):
             self._body = '\n' + self._body
@@ -37,5 +37,5 @@ class JekyllFrontMatter(FrontMatter):
         """
         super().ensure(title)
         if self._has_front_matter and 'layout' not in self._metadata and self._config.get('auto_add', False):
-            self._raw_front_matter += f'\nlayout: {self._default_layout}'
+            self._raw_front_matter += '\n' + yaml_fields({'layout': self._default_layout})
             self._metadata['layout'] = self._default_layout

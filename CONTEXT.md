@@ -56,6 +56,12 @@ The URL-safe name of a page, made from the note's name in lowercase ASCII words
 joined by hyphens.
 _Avoid_: filename, permalink
 
+**Title**:
+The name a page shows, kept in its front matter: the note's name, such as
+`ABA problém`, unless the note's front matter already gives one. Every page has
+one, because its slug loses the note's name.
+_Avoid_: page name, heading
+
 **Clash**:
 Two published notes whose pages would have the same slug in the same folder.
 It fails the run.
@@ -109,7 +115,8 @@ _Avoid_: target, output (for the destination)
 
 **Processor**:
 What expresses a run's pages for one kind of site, such as Jekyll or normalized
-Markdown: their paths, addresses, anchors, front matter and syntax.
+Markdown: their paths, addresses, anchors, the front matter fields the site
+needs (such as a Jekyll layout) and syntax.
 _Avoid_: target, converter, renderer, exporter
 
 **Normalized Markdown**:

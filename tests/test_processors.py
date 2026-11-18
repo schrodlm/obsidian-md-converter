@@ -18,3 +18,16 @@ class TestJekyllPostSlug:
     def test_non_post_slug_is_unchanged(self):
         fm = JekyllFrontMatter('---\nlayout: note\ndate: 2024-12-20\n---\n')
         assert JekyllProcessor("/{collection}/{slug}.html").page_path(Path("note.md"), fm.metadata) == Path("note.md")
+
+
+class TestJekyllAddress:
+    JEKYLL = JekyllProcessor("/{collection}/{slug}.html")
+
+    def test_collection_folder_loses_its_underscore(self):
+        assert self.JEKYLL.address(Path("tmux.md"), "_notes") == "/notes/tmux.html"
+
+    def test_subfolders_stay_in_the_address(self):
+        assert self.JEKYLL.address(Path("mff/nprg077.md"), "_courses") == "/courses/mff/nprg077.html"
+
+    def test_url_format_decides_the_shape(self):
+        assert JekyllProcessor("/{collection}/{slug}/").address(Path("tmux.md"), "_notes") == "/notes/tmux/"

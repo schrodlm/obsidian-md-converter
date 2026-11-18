@@ -8,7 +8,7 @@ from obsidian_md_converter.index import IndexedNote, NoteIndex, build_index, rea
 from obsidian_md_converter.links import NoteLinks
 from obsidian_md_converter.mapping import Mapping
 from obsidian_md_converter.problems import Problem
-from obsidian_md_converter.processors import JekyllProcessor
+from obsidian_md_converter.processors import JekyllProcessor, Processor
 from obsidian_md_converter.references import rewrite_references
 from obsidian_md_converter.staging import Staging
 
@@ -27,14 +27,15 @@ def run(config: Config) -> tuple[list[Problem], int]:
     index = build_index(config)
     print(f"Indexed {len(index)} notes")
 
-    problems = validate(index, checks_for(config))
+    processor = JekyllProcessor()
+    problems = validate(index, checks_for(config, processor))
     if config.fix_source:
         problems = fix(problems)
     if config.validate_only or any(problem.is_error for problem in problems):
         return problems, len(index)
 
     with Staging(config.output_root, replaced_folders(index, config)) as staging:
-        write_site(index, config, staging)
+        write_site(index, processor, config, staging)
         staging.swap()
     return problems, len(index)
 
@@ -53,7 +54,7 @@ def replaced_folders(index: NoteIndex, config: Config) -> list[Path]:
     return folders
 
 
-def write_site(index: NoteIndex, config: Config, staging: Staging):
+def write_site(index: NoteIndex, processor: Processor, config: Config, staging: Staging):
     """Write a page for every indexed note, and copy the images they show, into the staging folder."""
     for mapping in config.source_mappings:
         mapping : Mapping
@@ -62,11 +63,11 @@ def write_site(index: NoteIndex, config: Config, staging: Staging):
             continue
         print(f"\nProcessing: {mapping.source} -> {mapping.destination}")
         for number, note in enumerate(notes, start=1):
-            write_page(note, index, JekyllProcessor, config, staging)
+            write_page(note, index, processor, config, staging)
             print(f"Transferred {note.source.name}. [{number}/{len(notes)}]")
 
 
-def write_page(note: IndexedNote, index: NoteIndex, processor: type[JekyllProcessor], config: Config, staging: Staging):
+def write_page(note: IndexedNote, index: NoteIndex, processor: Processor, config: Config, staging: Staging):
     """Write the page of one checked note, named and linked from what the index holds about it."""
     dst = staging.path_for(note.mapping.destination.path / note.page_path(processor))
     dst.parent.mkdir(parents=True, exist_ok=True)

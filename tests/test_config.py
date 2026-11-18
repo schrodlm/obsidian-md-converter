@@ -53,11 +53,9 @@ source_mappings:
     destination: "_notes"
 links:
   url_format: "/{{collection}}/{{slug}}/"
-front_matter:
+processor:
   type: "jekyll"
-  jekyll:
-    auto_add: true
-    default_layout: "note"
+  default_layout: "note"
 runtime:
   validate_only: true
   force_create: true
@@ -319,7 +317,7 @@ images:
         with pytest.raises(ConfigError, match="must not be the same"):
             Config(config_path=cfg)
 
-    def test_front_matter_type_other_than_jekyll_raises(self, tmp_path, tmp_dirs):
+    def test_old_front_matter_section_raises_with_its_replacement(self, tmp_path, tmp_dirs):
         obsidian, output = tmp_dirs
         cfg = tmp_path / "config.yaml"
         cfg.write_text(f"""\
@@ -330,9 +328,9 @@ images:
   source_dir: "assets/images"
   destination_dir: "assets/img"
 front_matter:
-  type: "base"
+  type: "jekyll"
 """)
-        with pytest.raises(ConfigError, match="Unknown front matter type 'base'"):
+        with pytest.raises(ConfigError, match="replaced by 'processor'"):
             Config(config_path=cfg)
 
 

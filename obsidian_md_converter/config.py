@@ -79,11 +79,10 @@ class Config:
             default="/{collection}/{slug}.html",
         )
 
-        # --- Front matter ---
-        # Its 'jekyll' settings are read by processor_for(); Config doesn't need to know about them.
-        self.front_matter_config = self._resolve(
-            self._overrides.get('front_matter_config'),
-            nested_get(self._raw_config,'front_matter'),
+        # --- Processor ---
+        # Which site the pages are written for, and its options; processor_for() reads them, Config doesn't need to.
+        self.processor_config = self._resolve(
+            nested_get(self._raw_config, 'processor'),
             default={},
         )
 
@@ -112,9 +111,11 @@ class Config:
                 "This would overwrite your Obsidian vault."
             )
 
-        fm_type = self.front_matter_config.get('type', 'jekyll')
-        if fm_type != 'jekyll':
-            raise ConfigError(f"Unknown front matter type '{fm_type}'; the only type is 'jekyll'.")
+        if 'front_matter' in self._raw_config:
+            raise ConfigError(
+                "The 'front_matter' section was replaced by 'processor'. For a Jekyll site with a default layout, write:\n"
+                "processor:\n  type: jekyll\n  default_layout: note"
+            )
 
     # --- Helpers ---
 

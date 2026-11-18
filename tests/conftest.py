@@ -86,10 +86,7 @@ def convert(tmp_path):
             "paths": {"obsidian_root": str(vault_root), "output_root": str(site_root)},
             "source_mappings": [{"source": source, "destination": destination} for source, destination in mappings.items()],
             "images": {"source_dir": "assets/images", "destination_dir": "assets/img"},
-            "front_matter": {
-                "type": "jekyll",
-                "jekyll": {"auto_add": True, "default_layout": "note"},
-            },
+            "processor": {"type": "jekyll", "default_layout": "note"},
         }))
         config = Config(config_path=config_file, validate_only=validate or None, force_create=force or None, fix_source=fix or None)
         problems, _ = run_conversion(config)

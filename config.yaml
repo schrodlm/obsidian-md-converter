@@ -25,10 +25,13 @@ links:
   # A link to a note that is not published (not written yet, or outside every
   # mapping) becomes its plain display text.
 
-# Front matter settings
-front_matter:
-  # Front matter type: "jekyll" is the only one
+# The site the pages are written for
+processor:
+  # "jekyll" is the only one
   type: "jekyll"
+
+  # The layout a page gets when its front matter names none; without it, no layout is added
+  # default_layout: "note"
 
 # Runtime defaults (can be overridden via CLI flags)
 runtime:

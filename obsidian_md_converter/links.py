@@ -17,16 +17,12 @@ class NoteLinks:
 
 def rewrite_wikilink(link: WikiLink, links: NoteLinks, processor: Processor) -> str:
     """
-    The Markdown that replaces a scanned wikilink: the processor's link to the published note, or its display text.
+    The Markdown that replaces a scanned wikilink: the processor's link to the published note, or its display text
+    when the note is not published.
 
     A link to a heading the note does not have points at the page; validation reports it.
     """
-    if link.display is not None:
-        display_text = link.display
-    elif link.note and link.heading:
-        display_text = f"{link.note} > {link.heading}"
-    else:
-        display_text = link.note or link.heading
+    display_text = _display_text(link)
 
     if not link.note:
         anchor = links.own_anchors.anchor_for(link.heading) if link.heading else None
@@ -40,3 +36,20 @@ def rewrite_wikilink(link: WikiLink, links: NoteLinks, processor: Processor) -> 
     anchor = target.anchors.anchor_for(link.heading) if link.heading else None
     url = target.page.url if anchor is None else f"{target.page.url}#{anchor}"
     return processor.link_markdown(PageLink(display_text, url))
+
+
+def _display_text(link: WikiLink) -> str:
+    """
+    The text a wikilink shows: its own text when it gives one, otherwise the note and heading it names.
+
+    Examples:
+        [[2PC]]                  -> '2PC'
+        [[2PC|Two Phase Commit]] -> 'Two Phase Commit'
+        [[tmux#Prefix key]]      -> 'tmux > Prefix key'
+        [[#Prefix key]]          -> 'Prefix key'
+    """
+    if link.display is not None:
+        return link.display
+    if link.note and link.heading:
+        return f"{link.note} > {link.heading}"
+    return link.note or link.heading

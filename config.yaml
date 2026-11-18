@@ -30,8 +30,8 @@ front_matter:
   # Enable front matter processing
   enabled: true
 
-  # Front matter type: "base" (generic) or "jekyll"
-  type: "base"
+  # Front matter type: "jekyll" is the only one
+  type: "jekyll"
 
   # Preserve original filename as title in front matter
   preserve_original_title: false

@@ -130,6 +130,10 @@ class Config:
                 "Cannot preserve titles without front matter processing."
             )
 
+        fm_type = self.front_matter_config.get('type', 'jekyll')
+        if fm_type != 'jekyll':
+            raise ConfigError(f"Unknown front matter type '{fm_type}'; the only type is 'jekyll'.")
+
     # --- Helpers ---
 
     def _resolve_root(self, name: str) -> Path:

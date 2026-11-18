@@ -4,7 +4,7 @@ from pathlib import Path
 
 from obsidian_md_converter.checks import checks_for, fix, validate
 from obsidian_md_converter.config import Config
-from obsidian_md_converter.front_matter import FrontMatter, front_matter_class
+from obsidian_md_converter.front_matter import FrontMatter, JekyllFrontMatter
 from obsidian_md_converter.index import IndexedNote, NoteIndex, build_index, read_front_matter
 from obsidian_md_converter.links import NoteLinks
 from obsidian_md_converter.mapping import Mapping
@@ -55,7 +55,6 @@ def replaced_folders(index: NoteIndex, config: Config) -> list[Path]:
 
 def write_site(index: NoteIndex, config: Config, staging: Staging):
     """Write a page for every indexed note, and copy the images they show, into the staging folder."""
-    fm_class = front_matter_class(config.front_matter_config)
     for mapping in config.source_mappings:
         mapping : Mapping
         notes = index.notes_in(mapping)
@@ -63,7 +62,7 @@ def write_site(index: NoteIndex, config: Config, staging: Staging):
             continue
         print(f"\nProcessing: {mapping.source} -> {mapping.destination}")
         for number, note in enumerate(notes, start=1):
-            write_page(note, index, fm_class, config, staging)
+            write_page(note, index, JekyllFrontMatter, config, staging)
             print(f"Transferred {note.source.name}. [{number}/{len(notes)}]")
 
 

@@ -2,7 +2,7 @@ import datetime
 import re
 from pathlib import Path
 
-from obsidian_md_converter.processors.base import PageImage, Processor
+from obsidian_md_converter.processors.base import PageImage, PageLink, Processor
 from obsidian_md_converter.utils import parse_date
 
 # What a GFM heading id drops: anything but a letter, a digit, '_', '-', a space or a tab.
@@ -77,6 +77,14 @@ class JekyllProcessor(Processor):
         Example: default_layout 'note' -> {'layout': 'note'}; no default_layout -> {}
         """
         return {'layout': self.default_layout} if self.default_layout else {}
+
+    def link_markdown(self, link: PageLink) -> str:
+        """
+        An ordinary Markdown link.
+
+        Example: PageLink('the prefix', '/notes/tmux.html#prefix-key') -> '[the prefix](/notes/tmux.html#prefix-key)'
+        """
+        return f"[{link.text}]({link.url})"
 
     def image_markdown(self, image: PageImage) -> str:
         """

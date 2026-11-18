@@ -72,9 +72,9 @@ def write_page(note: IndexedNote, index: NoteIndex, processor: Processor, config
     dst = staging.path_for(note.mapping.destination.path / note.page_path(processor))
     dst.parent.mkdir(parents=True, exist_ok=True)
 
-    fm = read_front_matter(note.source.read_text(encoding='utf-8'), config.front_matter_config)
+    fm = read_front_matter(note.source.read_text(encoding='utf-8'))
     # The title is the note's name, which the page's file name loses: "ABA problém" for aba-problem.md
-    fm.add({'title': note.source.stem} | fm.defaults())
+    fm.add({'title': note.source.stem} | processor.front_matter_defaults())
 
     dst.write_text(fm.serialize(), encoding='utf-8')
 

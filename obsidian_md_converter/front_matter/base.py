@@ -104,10 +104,6 @@ class FrontMatter:
         self._parse_metadata()
         return True
 
-    def defaults(self) -> dict[str, str]:
-        """Fields a page gets when its front matter lacks them, besides its title; a site's front matter adds its own."""
-        return {}
-
     def add(self, fields: dict[str, str]):
         """Add each field the front matter lacks, at its end; a note without front matter gets one holding just them.
         Example: {'title': 'CAP theorem', 'layout': 'note'} added to 'layout: course' -> 'layout: course\ntitle: "CAP theorem"'"""

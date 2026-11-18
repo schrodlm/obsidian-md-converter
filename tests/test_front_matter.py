@@ -1,7 +1,8 @@
 import yaml
 
-from obsidian_md_converter.front_matter import FrontMatter, JekyllFrontMatter
+from obsidian_md_converter.front_matter import FrontMatter
 from obsidian_md_converter.front_matter.base import yaml_fields
+from obsidian_md_converter.processors import JekyllProcessor
 
 
 class TestYamlParsing:
@@ -82,30 +83,31 @@ class TestAdd:
 
 
 class TestJekyllDefaults:
-    AUTO_ADD = {'jekyll': {'auto_add': True, 'default_layout': 'note'}}
+    WITH_LAYOUT = JekyllProcessor("/{collection}/{slug}.html", default_layout="note")
+    WITHOUT_LAYOUT = JekyllProcessor("/{collection}/{slug}.html")
 
     def test_front_matter_without_layout_gets_the_default_layout(self):
-        fm = JekyllFrontMatter('---\ntags:\n  - mff\n---\nBody\n', self.AUTO_ADD)
-        fm.add({"title": "CAP theorem"} | fm.defaults())
+        fm = FrontMatter('---\ntags:\n  - mff\n---\nBody\n')
+        fm.add({"title": "CAP theorem"} | self.WITH_LAYOUT.front_matter_defaults())
         assert fm.get("layout") == "note"
         assert fm.serialize() == '---\ntags:\n  - mff\ntitle: "CAP theorem"\nlayout: "note"\n---\nBody\n'
 
     def test_existing_layout_is_kept(self):
-        fm = JekyllFrontMatter('---\nlayout: course\n---\nBody\n', self.AUTO_ADD)
-        fm.add({"title": "NPRG077"} | fm.defaults())
+        fm = FrontMatter('---\nlayout: course\n---\nBody\n')
+        fm.add({"title": "NPRG077"} | self.WITH_LAYOUT.front_matter_defaults())
         assert fm.get("layout") == "course"
 
     def test_note_without_front_matter_gets_layout_and_title(self):
-        fm = JekyllFrontMatter('Body\n', self.AUTO_ADD)
-        fm.add({"title": "2PC"} | fm.defaults())
+        fm = FrontMatter('Body\n')
+        fm.add({"title": "2PC"} | self.WITH_LAYOUT.front_matter_defaults())
         assert fm.serialize() == '---\ntitle: "2PC"\nlayout: "note"\n---\n\nBody\n'
 
     def test_layout_is_not_added_without_auto_add(self):
-        fm = JekyllFrontMatter('---\ntags: []\n---\nBody\n', {'jekyll': {'auto_add': False}})
-        fm.add({"title": "x"} | fm.defaults())
+        fm = FrontMatter('---\ntags: []\n---\nBody\n')
+        fm.add({"title": "x"} | self.WITHOUT_LAYOUT.front_matter_defaults())
         assert fm.get("layout") is None
 
     def test_note_without_front_matter_gets_a_title_without_auto_add(self):
-        fm = JekyllFrontMatter('Body\n', {'jekyll': {'auto_add': False}})
-        fm.add({"title": "2PC"} | fm.defaults())
+        fm = FrontMatter('Body\n')
+        fm.add({"title": "2PC"} | self.WITHOUT_LAYOUT.front_matter_defaults())
         assert fm.serialize() == '---\ntitle: "2PC"\n---\n\nBody\n'

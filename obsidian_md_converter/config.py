@@ -93,11 +93,6 @@ class Config:
             nested_get(self._raw_config,'front_matter'),
             default={},
         )
-        self.preserve_original_title = self._resolve(
-            self._overrides.get('preserve_original_title'),
-            nested_get(self._raw_config,'front_matter', 'preserve_original_title'),
-            default=False,
-        )
 
         # --- Runtime flags (YAML default, CLI wins) ---
         self.validate_only = self._resolve(
@@ -122,12 +117,6 @@ class Config:
             raise ConfigError(
                 "'obsidian_root' and 'output_root' must not be the same directory. "
                 "This would overwrite your Obsidian vault."
-            )
-
-        if not self.front_matter_enabled and self.preserve_original_title:
-            raise ConfigError(
-                "'preserve_original_title' is enabled but front matter is disabled. "
-                "Cannot preserve titles without front matter processing."
             )
 
         fm_type = self.front_matter_config.get('type', 'jekyll')

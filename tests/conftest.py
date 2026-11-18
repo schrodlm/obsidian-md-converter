@@ -89,7 +89,6 @@ def convert(tmp_path):
             "front_matter": {
                 "enabled": True,
                 "type": "jekyll",
-                "preserve_original_title": True,
                 "jekyll": {"auto_add": True, "default_layout": "note"},
             },
         }))

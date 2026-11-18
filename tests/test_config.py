@@ -56,7 +56,6 @@ links:
 front_matter:
   enabled: true
   type: "jekyll"
-  preserve_original_title: true
   jekyll:
     auto_add: true
     default_layout: "note"
@@ -287,7 +286,6 @@ class TestDefaults:
         config = Config(config_path=minimal_yaml)
         assert config.url_format == "/{collection}/{slug}.html"
         assert config.front_matter_enabled is True
-        assert config.preserve_original_title is False
         assert config.validate_only is False
         assert config.force_create is False
         assert config.fix_source is False
@@ -295,7 +293,6 @@ class TestDefaults:
 
     def test_yaml_overrides_defaults(self, full_yaml):
         config = Config(config_path=full_yaml)
-        assert config.preserve_original_title is True
         assert config.validate_only is True
         assert config.force_create is True
         assert config.fix_source is True
@@ -322,23 +319,6 @@ images:
   destination_dir: "assets/images"
 """)
         with pytest.raises(ConfigError, match="must not be the same"):
-            Config(config_path=cfg)
-
-    def test_preserve_title_without_front_matter_raises(self, tmp_path, tmp_dirs):
-        obsidian, output = tmp_dirs
-        cfg = tmp_path / "config.yaml"
-        cfg.write_text(f"""\
-paths:
-  obsidian_root: "{obsidian}"
-  output_root: "{output}"
-images:
-  source_dir: "assets/images"
-  destination_dir: "assets/img"
-front_matter:
-  enabled: false
-  preserve_original_title: true
-""")
-        with pytest.raises(ConfigError, match="preserve_original_title"):
             Config(config_path=cfg)
 
     def test_front_matter_type_other_than_jekyll_raises(self, tmp_path, tmp_dirs):

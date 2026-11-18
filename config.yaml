@@ -33,9 +33,6 @@ front_matter:
   # Front matter type: "jekyll" is the only one
   type: "jekyll"
 
-  # Preserve original filename as title in front matter
-  preserve_original_title: false
-
 # Runtime defaults (can be overridden via CLI flags)
 runtime:
   validate_only: false

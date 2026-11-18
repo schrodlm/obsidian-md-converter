@@ -341,6 +341,22 @@ front_matter:
         with pytest.raises(ConfigError, match="preserve_original_title"):
             Config(config_path=cfg)
 
+    def test_front_matter_type_other_than_jekyll_raises(self, tmp_path, tmp_dirs):
+        obsidian, output = tmp_dirs
+        cfg = tmp_path / "config.yaml"
+        cfg.write_text(f"""\
+paths:
+  obsidian_root: "{obsidian}"
+  output_root: "{output}"
+images:
+  source_dir: "assets/images"
+  destination_dir: "assets/img"
+front_matter:
+  type: "base"
+""")
+        with pytest.raises(ConfigError, match="Unknown front matter type 'base'"):
+            Config(config_path=cfg)
+
 
 # ---------------------------------------------------------------------------
 # Helpers

@@ -5,7 +5,7 @@ from pathlib import Path
 
 from obsidian_md_converter.config import Config
 from obsidian_md_converter.errors import ConversionError
-from obsidian_md_converter.front_matter import FrontMatter, create_front_matter
+from obsidian_md_converter.front_matter import FrontMatter
 from obsidian_md_converter.headings import HeadingAnchors
 from obsidian_md_converter.images import local_image_name
 from obsidian_md_converter.mapping import Mapping
@@ -105,9 +105,9 @@ class NoteIndex:
         return [note for note in self.notes if note.mapping == mapping]
 
 
-def read_front_matter(content: str, fm_config: dict) -> FrontMatter:
+def read_front_matter(content: str) -> FrontMatter:
     """A note's front matter as its page is written: tabs in the YAML are replaced by spaces."""
-    fm = create_front_matter(content, {'front_matter': fm_config})
+    fm = FrontMatter(content)
     fm.fix_tabs()
     return fm
 
@@ -142,7 +142,7 @@ def build_index(config: Config, processor: Processor) -> NoteIndex:
 
 def _index_note(md_file: Path, content: str, mapping: Mapping, config: Config, processor: Processor) -> IndexedNote:
     scanned = scanning.scan(content)
-    fm = read_front_matter(content, config.front_matter_config)
+    fm = read_front_matter(content)
     return IndexedNote(
         source=md_file,
         mapping=mapping,

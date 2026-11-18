@@ -21,7 +21,6 @@ from obsidian_md_converter.scanning import scan_body
 
 VAULT = Path("/vault")
 SITE = Path("/site")
-JEKYLL = {"type": "jekyll", "jekyll": {"auto_add": True, "default_layout": "note"}}
 
 
 @pytest.fixture(autouse=True)
@@ -38,7 +37,7 @@ def indexed_note(name: str, body: str = "", front_matter: str | None = None, fol
                  images: list[ImageReference] | None = None) -> IndexedNote:
     """A published note as the index records it, built from its name, body and front matter."""
     slug = slugify_text(name)
-    fm = read_front_matter("" if front_matter is None else f"---\n{front_matter}\n---\n", JEKYLL)
+    fm = read_front_matter("" if front_matter is None else f"---\n{front_matter}\n---\n")
     return IndexedNote(
         source=VAULT / folder / f"{name}.md",
         mapping=mapping(folder),

@@ -25,3 +25,7 @@ class Processor(ABC):
     @abstractmethod
     def anchor_ids(self, heading_texts: list[str]) -> list[str]:
         """The ids the site gives a page's headings, in the same order, given each heading's rendered text."""
+
+    @abstractmethod
+    def front_matter_defaults(self) -> dict[str, str]:
+        """Fields a page gets when its note's front matter lacks them, besides its title, as plain values."""

@@ -80,9 +80,7 @@ class Config:
         )
 
         # --- Front matter ---
-        #TODO: Introduce FrontMatterConfig class
-        # Passed directly to create_front_matter() factory — Config doesn't
-        # need to know about Jekyll-specific or other type-specific details.
+        # Its 'jekyll' settings are read by processor_for(); Config doesn't need to know about them.
         self.front_matter_config = self._resolve(
             self._overrides.get('front_matter_config'),
             nested_get(self._raw_config,'front_matter'),

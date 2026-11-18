@@ -12,9 +12,11 @@ _GFM_NON_WORD_RE = re.compile(r'[^\w\- \t]')
 class JekyllProcessor(Processor):
     """How a run's pages are expressed for a Jekyll site."""
 
-    def __init__(self, url_format: str):
+    def __init__(self, url_format: str, default_layout: str | None = None):
         # Such as '/{collection}/{slug}.html', filled in with the collection's name and the page's slug.
         self.url_format = url_format
+        # The layout a page gets when its front matter names none, such as 'note'; None adds no layout.
+        self.default_layout = default_layout
 
     def page_path(self, neutral_path: Path, front_matter: dict) -> Path:
         """
@@ -67,3 +69,11 @@ class JekyllProcessor(Processor):
             counts[base] = count
             ids.append(f"{base}-{count}" if count else base)
         return ids
+
+    def front_matter_defaults(self) -> dict[str, str]:
+        """
+        The default layout, which names the template Jekyll renders a page in: 'note' means '_layouts/note.html'.
+
+        Example: default_layout 'note' -> {'layout': 'note'}; no default_layout -> {}
+        """
+        return {'layout': self.default_layout} if self.default_layout else {}

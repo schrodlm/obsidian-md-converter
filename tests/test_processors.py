@@ -7,7 +7,7 @@ import pytest
 from obsidian_md_converter.errors import ConfigError
 from obsidian_md_converter.front_matter import FrontMatter
 from obsidian_md_converter.processors import JekyllProcessor, processor_for
-from obsidian_md_converter.processors.base import PageImage
+from obsidian_md_converter.processors.base import PageImage, PageLink
 
 
 class TestJekyllPostSlug:
@@ -62,6 +62,17 @@ class TestJekyllFrontMatterDefaults:
 
     def test_no_default_layout_gives_no_defaults(self):
         assert JekyllProcessor("/{collection}/{slug}.html").front_matter_defaults() == {}
+
+
+class TestJekyllLinkMarkdown:
+    JEKYLL = JekyllProcessor("/{collection}/{slug}.html")
+
+    def test_link_is_ordinary_markdown(self):
+        link = PageLink("the prefix", "/notes/tmux.html#prefix-key")
+        assert self.JEKYLL.link_markdown(link) == "[the prefix](/notes/tmux.html#prefix-key)"
+
+    def test_link_within_the_page_keeps_its_anchor_only_url(self):
+        assert self.JEKYLL.link_markdown(PageLink("Prefix key", "#prefix-key")) == "[Prefix key](#prefix-key)"
 
 
 class TestJekyllImageMarkdown:

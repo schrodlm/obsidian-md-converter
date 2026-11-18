@@ -1,5 +1,19 @@
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from pathlib import Path
+
+
+@dataclass(frozen=True)
+class PageImage:
+    """
+    An image as a page shows it, resolved by the core: its alt text, its URL on the site and the size the note gave.
+
+    Example: ![[a.png|Flow|200x100]] -> PageImage('Flow', '/assets/img/a.png', '200', '100')
+    """
+    alt: str
+    url: str
+    width: str | None = None
+    height: str | None = None
 
 
 class Processor(ABC):
@@ -10,6 +24,7 @@ class Processor(ABC):
     sites differ, it asks the processor, which answers from resolved values with plain values:
       - a page's name and address on the site: page_path, address, anchor_ids
       - the front matter fields the site needs: front_matter_defaults
+      - the Markdown text of a structure: image_markdown
 
     It never parses, looks anything up or touches the disk; what the core hands it is all it knows.
     """
@@ -34,3 +49,7 @@ class Processor(ABC):
     @abstractmethod
     def front_matter_defaults(self) -> dict[str, str]:
         """Fields a page gets when its note's front matter lacks them, besides its title, as plain values."""
+
+    @abstractmethod
+    def image_markdown(self, image: PageImage) -> str:
+        """The Markdown text that shows an image on a page."""

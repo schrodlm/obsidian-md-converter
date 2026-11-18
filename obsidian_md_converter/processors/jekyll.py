@@ -2,7 +2,7 @@ import datetime
 import re
 from pathlib import Path
 
-from obsidian_md_converter.processors.base import Processor
+from obsidian_md_converter.processors.base import PageImage, Processor
 from obsidian_md_converter.utils import parse_date
 
 # What a GFM heading id drops: anything but a letter, a digit, '_', '-', a space or a tab.
@@ -77,3 +77,18 @@ class JekyllProcessor(Processor):
         Example: default_layout 'note' -> {'layout': 'note'}; no default_layout -> {}
         """
         return {'layout': self.default_layout} if self.default_layout else {}
+
+    def image_markdown(self, image: PageImage) -> str:
+        """
+        A Markdown image, sized with a kramdown attribute list when the note gave a width.
+
+        Examples:
+            PageImage('Flow', '/assets/img/a.png', '200', '100') -> '![Flow](/assets/img/a.png){:width="200" height="100"}'
+            PageImage('Fig', '/assets/img/b.png')                -> '![Fig](/assets/img/b.png)'
+        """
+        markdown = f"![{image.alt}]({image.url})"
+        if image.width and image.height:
+            return f'{markdown}{{:width="{image.width}" height="{image.height}"}}'
+        if image.width:
+            return f'{markdown}{{:width="{image.width}"}}'
+        return markdown

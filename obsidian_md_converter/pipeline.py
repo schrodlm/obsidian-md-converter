@@ -80,4 +80,4 @@ def write_page(note: IndexedNote, index: NoteIndex, processor: Processor, config
 
     links = NoteLinks(index=index, own_anchors=note.anchors)
     rewrite_references(dst, config.obsidian_image_dir, config.output_image_dir,
-                       staging.path_for(config.output_image_dir.path), links)
+                       staging.path_for(config.output_image_dir.path), links, processor)

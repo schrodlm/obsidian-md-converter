@@ -1,8 +1,12 @@
 import datetime
 from pathlib import Path
+from types import SimpleNamespace
 
+import pytest
+
+from obsidian_md_converter.errors import ConfigError
 from obsidian_md_converter.front_matter import FrontMatter
-from obsidian_md_converter.processors import JekyllProcessor
+from obsidian_md_converter.processors import JekyllProcessor, processor_for
 
 
 class TestJekyllPostSlug:
@@ -57,3 +61,29 @@ class TestJekyllFrontMatterDefaults:
 
     def test_no_default_layout_gives_no_defaults(self):
         assert JekyllProcessor("/{collection}/{slug}.html").front_matter_defaults() == {}
+
+
+class TestProcessorFor:
+    @staticmethod
+    def config(processor: dict) -> SimpleNamespace:
+        """The two Config fields processor_for reads."""
+        return SimpleNamespace(processor_config=processor, url_format="/{collection}/{slug}.html")
+
+    def test_jekyll_gets_its_default_layout_and_the_url_format(self):
+        processor = processor_for(self.config({"type": "jekyll", "default_layout": "note"}))
+        assert isinstance(processor, JekyllProcessor)
+        assert processor.front_matter_defaults() == {"layout": "note"}
+        assert processor.url_format == "/{collection}/{slug}.html"
+
+    def test_no_processor_section_is_jekyll_without_a_default_layout(self):
+        processor = processor_for(self.config({}))
+        assert isinstance(processor, JekyllProcessor)
+        assert processor.front_matter_defaults() == {}
+
+    def test_unknown_type_raises(self):
+        with pytest.raises(ConfigError, match="Unknown processor type 'astro'"):
+            processor_for(self.config({"type": "astro"}))
+
+    def test_unknown_option_raises(self):
+        with pytest.raises(ConfigError, match="default_layuot"):
+            processor_for(self.config({"type": "jekyll", "default_layuot": "note"}))

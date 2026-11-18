@@ -80,3 +80,8 @@ class TestJekyllEnsure:
         fm = JekyllFrontMatter('---\ntags: []\n---\nBody\n', {'jekyll': {'auto_add': False}})
         fm.ensure("x")
         assert fm.get("layout") is None
+
+    def test_note_without_front_matter_gets_a_title_without_auto_add(self):
+        fm = JekyllFrontMatter('Body\n', {'jekyll': {'auto_add': False}})
+        fm.ensure("2PC")
+        assert fm.serialize() == '---\ntitle: "2PC"\n---\n\nBody\n'

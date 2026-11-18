@@ -4,11 +4,11 @@ from pathlib import Path
 
 from obsidian_md_converter.checks import checks_for, fix, validate
 from obsidian_md_converter.config import Config
-from obsidian_md_converter.front_matter import FrontMatter, JekyllFrontMatter
 from obsidian_md_converter.index import IndexedNote, NoteIndex, build_index, read_front_matter
 from obsidian_md_converter.links import NoteLinks
 from obsidian_md_converter.mapping import Mapping
 from obsidian_md_converter.problems import Problem
+from obsidian_md_converter.processors import JekyllProcessor
 from obsidian_md_converter.references import rewrite_references
 from obsidian_md_converter.staging import Staging
 
@@ -62,13 +62,13 @@ def write_site(index: NoteIndex, config: Config, staging: Staging):
             continue
         print(f"\nProcessing: {mapping.source} -> {mapping.destination}")
         for number, note in enumerate(notes, start=1):
-            write_page(note, index, JekyllFrontMatter, config, staging)
+            write_page(note, index, JekyllProcessor, config, staging)
             print(f"Transferred {note.source.name}. [{number}/{len(notes)}]")
 
 
-def write_page(note: IndexedNote, index: NoteIndex, fm_class: type[FrontMatter], config: Config, staging: Staging):
+def write_page(note: IndexedNote, index: NoteIndex, processor: type[JekyllProcessor], config: Config, staging: Staging):
     """Write the page of one checked note, named and linked from what the index holds about it."""
-    dst = staging.path_for(note.mapping.destination.path / note.page_path(fm_class))
+    dst = staging.path_for(note.mapping.destination.path / note.page_path(processor))
     dst.parent.mkdir(parents=True, exist_ok=True)
 
     fm = read_front_matter(note.source.read_text(encoding='utf-8'), config.front_matter_config)

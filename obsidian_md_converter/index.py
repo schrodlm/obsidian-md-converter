@@ -11,6 +11,7 @@ from obsidian_md_converter.images import local_image_name
 from obsidian_md_converter.mapping import Mapping
 from obsidian_md_converter.naming import slugify
 from obsidian_md_converter.paths import ObsidianPath
+from obsidian_md_converter.processors import JekyllProcessor
 from obsidian_md_converter.publishing import is_published
 from obsidian_md_converter import scanning
 from obsidian_md_converter.scanning import Embed, MarkdownImage, WikiLink
@@ -56,7 +57,7 @@ class IndexedNote:
     # Images on the web are not the vault's, and are left out.
     images: list[ImageReference]
 
-    def page_path(self, front_matter_class: type[FrontMatter]) -> Path:
+    def page_path(self, processor: type[JekyllProcessor]) -> Path:
         """
         The page's path below its mapping's site folder, named by the site generator's convention.
 
@@ -65,7 +66,7 @@ class IndexedNote:
         Raises:
             ValueError: if the front matter lacks what the convention needs.
         """
-        name = front_matter_class.apply_slug_transform(self.page.neutral_path.name, self.front_matter.values)
+        name = processor.apply_slug_transform(self.page.neutral_path.name, self.front_matter.values)
         return self.page.neutral_path.with_name(name)
 
 

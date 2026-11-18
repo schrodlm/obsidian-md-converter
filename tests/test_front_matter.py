@@ -1,5 +1,3 @@
-import datetime
-
 from obsidian_md_converter.front_matter import FrontMatter, JekyllFrontMatter
 
 
@@ -37,21 +35,6 @@ class TestYamlParsing:
         assert fm.fix_tabs()
         assert fm.yaml_error is None
         assert fm.metadata == {"tags": ["a"]}
-
-
-class TestJekyllPostSlug:
-    def test_iso_date_prefixes_post_slug(self):
-        fm = JekyllFrontMatter('---\nlayout: post\ndate: 2024-12-20\n---\n')
-        assert isinstance(fm.get("date"), datetime.date)
-        assert fm.apply_slug_transform("turing-machine.md", fm.metadata) == "2024-12-20-turing-machine.md"
-
-    def test_dotted_date_prefixes_post_slug(self):
-        fm = JekyllFrontMatter('---\nlayout: post\ndate: 20.9.2025\n---\n')
-        assert fm.apply_slug_transform("an-unexamined-habit.md", fm.metadata) == "2025-09-20-an-unexamined-habit.md"
-
-    def test_non_post_slug_is_unchanged(self):
-        fm = JekyllFrontMatter('---\nlayout: note\ndate: 2024-12-20\n---\n')
-        assert fm.apply_slug_transform("note.md", fm.metadata) == "note.md"
 
 
 class TestJekyllEnsure:

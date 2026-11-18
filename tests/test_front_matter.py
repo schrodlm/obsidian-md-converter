@@ -53,7 +53,7 @@ class TestYamlFields:
 
     def test_title_with_a_quote_keeps_the_front_matter_valid(self):
         fm = FrontMatter('---\ntags: [mff]\n---\nBody\n')
-        fm.ensure('The "CAP" theorem')
+        fm.add({'title': 'The "CAP" theorem'})
         assert FrontMatter(fm.serialize()).metadata == {'tags': ['mff'], 'title': 'The "CAP" theorem'}
 
 
@@ -62,26 +62,26 @@ class TestJekyllEnsure:
 
     def test_front_matter_without_layout_gets_the_default_layout(self):
         fm = JekyllFrontMatter('---\ntags:\n  - mff\n---\nBody\n', self.AUTO_ADD)
-        fm.ensure("CAP theorem")
+        fm.add({"title": "CAP theorem"} | fm.defaults())
         assert fm.get("layout") == "note"
         assert fm.serialize() == '---\ntags:\n  - mff\ntitle: "CAP theorem"\nlayout: "note"\n---\nBody\n'
 
     def test_existing_layout_is_kept(self):
         fm = JekyllFrontMatter('---\nlayout: course\n---\nBody\n', self.AUTO_ADD)
-        fm.ensure("NPRG077")
+        fm.add({"title": "NPRG077"} | fm.defaults())
         assert fm.get("layout") == "course"
 
     def test_note_without_front_matter_gets_layout_and_title(self):
         fm = JekyllFrontMatter('Body\n', self.AUTO_ADD)
-        fm.ensure("2PC")
+        fm.add({"title": "2PC"} | fm.defaults())
         assert fm.serialize() == '---\ntitle: "2PC"\nlayout: "note"\n---\n\nBody\n'
 
     def test_layout_is_not_added_without_auto_add(self):
         fm = JekyllFrontMatter('---\ntags: []\n---\nBody\n', {'jekyll': {'auto_add': False}})
-        fm.ensure("x")
+        fm.add({"title": "x"} | fm.defaults())
         assert fm.get("layout") is None
 
     def test_note_without_front_matter_gets_a_title_without_auto_add(self):
         fm = JekyllFrontMatter('Body\n', {'jekyll': {'auto_add': False}})
-        fm.ensure("2PC")
+        fm.add({"title": "2PC"} | fm.defaults())
         assert fm.serialize() == '---\ntitle: "2PC"\n---\n\nBody\n'

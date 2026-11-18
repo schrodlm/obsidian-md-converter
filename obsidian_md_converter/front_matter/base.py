@@ -118,10 +118,7 @@ class FrontMatter:
         self._metadata['title'] = title
 
     def _create_front_matter(self, title: str):
-        """Create minimal front matter with just a title.
-
-        Subclasses can override to add additional fields (e.g. layout).
-        """
+        """Create minimal front matter with just a title."""
         self._has_front_matter = True
         self._raw_front_matter = yaml_fields({'title': title})
         self._metadata = {'title': title}
@@ -129,17 +126,14 @@ class FrontMatter:
             self._body = '\n' + self._body
 
     def ensure(self, title: str):
-        """Ensure front matter is properly configured.
-
-        If front matter exists, ensures title is present.
-        If front matter is missing and auto_add is enabled in config, creates it.
+        """Ensure the front matter has a title; a note without front matter gets one holding just the title.
 
         Args:
             title: Title to use (typically the original filename before slugification).
         """
         if self._has_front_matter:
             self._ensure_title(title)
-        elif self._config.get('auto_add', False):
+        else:
             self._create_front_matter(title)
 
     def serialize(self) -> str:

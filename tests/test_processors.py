@@ -31,3 +31,21 @@ class TestJekyllAddress:
 
     def test_url_format_decides_the_shape(self):
         assert JekyllProcessor("/{collection}/{slug}/").address(Path("tmux.md"), "_notes") == "/notes/tmux/"
+
+
+class TestJekyllAnchorIds:
+    JEKYLL = JekyllProcessor("/{collection}/{slug}.html")
+
+    def test_text_is_lowercased_and_spaces_become_hyphens(self):
+        assert self.JEKYLL.anchor_ids(["Prefix key"]) == ["prefix-key"]
+
+    def test_punctuation_is_dropped(self):
+        assert self.JEKYLL.anchor_ids(["2-3 trees & B+"]) == ["2-3-trees--b"]
+
+    def test_repeats_are_numbered_across_the_page(self):
+        assert self.JEKYLL.anchor_ids(["Prefix key", "Other", "Prefix key", "Prefix key"]) == [
+            "prefix-key", "other", "prefix-key-1", "prefix-key-2",
+        ]
+
+    def test_letters_with_diacritics_are_kept(self):
+        assert self.JEKYLL.anchor_ids(["Totální uspořádání"]) == ["totální-uspořádání"]

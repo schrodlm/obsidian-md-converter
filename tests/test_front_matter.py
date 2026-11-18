@@ -44,7 +44,7 @@ class TestJekyllEnsure:
         fm = JekyllFrontMatter('---\ntags:\n  - mff\n---\nBody\n', self.AUTO_ADD)
         fm.ensure("CAP theorem")
         assert fm.get("layout") == "note"
-        assert fm.serialize() == '---\ntags:\n  - mff\ntitle: "CAP theorem"\nlayout: note\n---\nBody\n'
+        assert fm.serialize() == '---\ntags:\n  - mff\ntitle: "CAP theorem"\nlayout: "note"\n---\nBody\n'
 
     def test_existing_layout_is_kept(self):
         fm = JekyllFrontMatter('---\nlayout: course\n---\nBody\n', self.AUTO_ADD)

@@ -102,12 +102,12 @@ class TestJekyllDefaults:
         fm.add({"title": "2PC"} | self.WITH_LAYOUT.front_matter_defaults())
         assert fm.serialize() == '---\ntitle: "2PC"\nlayout: "note"\n---\n\nBody\n'
 
-    def test_layout_is_not_added_without_auto_add(self):
+    def test_layout_is_not_added_without_a_default_layout(self):
         fm = FrontMatter('---\ntags: []\n---\nBody\n')
         fm.add({"title": "x"} | self.WITHOUT_LAYOUT.front_matter_defaults())
         assert fm.get("layout") is None
 
-    def test_note_without_front_matter_gets_a_title_without_auto_add(self):
+    def test_note_without_front_matter_gets_a_title_without_a_default_layout(self):
         fm = FrontMatter('Body\n')
         fm.add({"title": "2PC"} | self.WITHOUT_LAYOUT.front_matter_defaults())
         assert fm.serialize() == '---\ntitle: "2PC"\n---\n\nBody\n'

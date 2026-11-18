@@ -4,6 +4,17 @@ from pathlib import Path
 
 
 @dataclass(frozen=True)
+class PageLink:
+    """
+    A link as a page shows it, resolved by the core: its text and the URL it points at, with the heading's anchor.
+
+    Example: [[tmux#Prefix key|the prefix]] -> PageLink('the prefix', '/notes/tmux.html#prefix-key')
+    """
+    text: str
+    url: str
+
+
+@dataclass(frozen=True)
 class PageImage:
     """
     An image as a page shows it, resolved by the core: its alt text, its URL on the site and the size the note gave.
@@ -24,7 +35,7 @@ class Processor(ABC):
     sites differ, it asks the processor, which answers from resolved values with plain values:
       - a page's name and address on the site: page_path, address, anchor_ids
       - the front matter fields the site needs: front_matter_defaults
-      - the Markdown text of a structure: image_markdown
+      - the Markdown text of a structure: link_markdown, image_markdown
 
     It never parses, looks anything up or touches the disk; what the core hands it is all it knows.
     """
@@ -49,6 +60,10 @@ class Processor(ABC):
     @abstractmethod
     def front_matter_defaults(self) -> dict[str, str]:
         """Fields a page gets when its note's front matter lacks them, besides its title, as plain values."""
+
+    @abstractmethod
+    def link_markdown(self, link: PageLink) -> str:
+        """The Markdown text that shows a link on a page."""
 
     @abstractmethod
     def image_markdown(self, image: PageImage) -> str:

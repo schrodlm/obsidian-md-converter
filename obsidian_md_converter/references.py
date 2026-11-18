@@ -17,7 +17,7 @@ def rewrite_references(filepath: Path, src_dir: ObsidianPath, dest_dir: OutputPa
 
     Only the structures the scanner recognises are replaced; every other character, including
     anything inside code, passes through unchanged. Images are pointed at in `dest_dir` and copied into `copy_dir`,
-    and written as `processor` writes an image.
+    and links and images are written as `processor` writes them.
     """
     content = filepath.read_text(encoding='utf-8')
     note = scanning.scan(content)
@@ -27,7 +27,7 @@ def rewrite_references(filepath: Path, src_dir: ObsidianPath, dest_dir: OutputPa
         pieces.append(note.body[position:structure.span.start])
         original = note.body[structure.span.start:structure.span.end]
         if isinstance(structure, WikiLink):
-            pieces.append(rewrite_wikilink(structure, links))
+            pieces.append(rewrite_wikilink(structure, links, processor))
         elif isinstance(structure, Embed):
             pieces.append(rewrite_embed(structure, src_dir, dest_dir, copy_dir, processor))
         else:

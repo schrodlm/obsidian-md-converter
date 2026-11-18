@@ -1,7 +1,7 @@
 import re
+from collections.abc import Callable
 
 from obsidian_md_converter import scanning
-from obsidian_md_converter.processors.jekyll import JekyllProcessor
 
 _EXPLICIT_ID_RE = re.compile(r'[ \t]*\{#(?P<id>[^}\s]+)\}$')
 
@@ -44,24 +44,29 @@ def _visible_text(structure) -> str:
 
 
 class HeadingAnchors:
-    """The anchors a Jekyll page gives its headings, looked up by the heading text an Obsidian link names.
+    """The anchors a page gives its headings, looked up by the heading text an Obsidian link names.
 
-    Jekyll's default kramdown reads Markdown as GFM, whose header ids are the lowercased rendered
-    text with non-word characters removed and each space turned into '-', numbered on repeats.
+    `anchor_ids` is the site's rule for naming headings, given their rendered text in order;
+    a heading with an explicit `{#id}` keeps that id instead.
     """
 
-    def __init__(self, body: str):
-        self._anchors: dict[str, str] = {}
-        id_counts: dict[str, int] = {}
-
+    def __init__(self, body: str, anchor_ids: Callable[[list[str]], list[str]]):
+        # Each heading's key, with its explicit id or None when the site names it.
+        headings: list[tuple[str, str | None]] = []
+        named_by_site: list[str] = []
         for source in (heading.text for heading in scanning.scan_body(body).headings):
             explicit = _EXPLICIT_ID_RE.search(source)
             if explicit:
-                source = source[:explicit.start()]
-                anchor = explicit.group('id')
+                headings.append((heading_key(source[:explicit.start()]), explicit.group('id')))
             else:
-                anchor = JekyllProcessor._gfm_id(rendered_heading_text(source), id_counts)
-            self._anchors.setdefault(heading_key(source), anchor)
+                headings.append((heading_key(source), None))
+                named_by_site.append(rendered_heading_text(source))
+
+        site_ids = iter(anchor_ids(named_by_site))
+        self._anchors: dict[str, str] = {}
+        for key, explicit_id in headings:
+            anchor = explicit_id if explicit_id is not None else next(site_ids)
+            self._anchors.setdefault(key, anchor)
 
     def anchor_for(self, heading: str) -> str | None:
         """The page anchor for the heading a link names, or None when the note has no such heading."""

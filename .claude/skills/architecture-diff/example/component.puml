@@ -1,0 +1,49 @@
+@startuml
+!include style.iuml
+skinparam componentStyle uml2
+skinparam component {
+  BackgroundColor #F5F5F5
+  BorderColor #888888
+}
+skinparam interface {
+  BackgroundColor #E0ECFF
+  BorderColor #0050C0
+}
+title Processor: the one place that knows what a kind of site wants
+
+folder "vault" as vault
+folder "site folder" as site
+
+package "core (knows no site)" {
+  component "index" as idx
+  component "checks" as chk
+  component "write\n(pipeline, references)" as wr
+}
+
+interface "Processor" as P
+
+package "processors" #EEF4FF {
+  component "JekyllProcessor" as J #E0ECFF
+  component "NormalizedMarkdown\n<i>next PR, #13</i>" as N
+}
+
+vault --> idx : notes
+idx -right-> chk : NoteIndex
+chk -right-> wr : no errors
+wr --> site : pages
+
+idx ..> P : address\nanchor_ids
+chk ..> P : page_path
+wr ..> P : page_path, front_matter\nlink, image
+P -- J
+P .. N
+
+note right of P
+  <b>In:</b> facts the core already resolved
+    neutral path, mapping, heading texts,
+    front matter values, the linked page's
+    address and anchor, an image's URL and size
+  <b>Out:</b> paths and text for one kind of site
+  <b>Never:</b> parses, looks anything up, touches the disk
+end note
+@enduml

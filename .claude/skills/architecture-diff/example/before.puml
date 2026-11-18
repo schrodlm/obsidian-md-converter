@@ -1,0 +1,86 @@
+@startuml
+!include style.iuml
+title Before (master c783fa5): red = holds a Jekyll rule
+
+package "core: run" {
+  class pipeline <<module>> #FFE0E0 {
+    +run(config) : tuple
+    <color:#C00000>+write_page(note, index, fm_class, config, staging)</color>
+  }
+  class Config #FFE0E0 {
+    <color:#C00000>+url_format : str</color>
+    <color:#C00000>+front_matter_config : dict</color>
+  }
+  class front_matter <<module>> #FFE0E0 {
+    <color:#C00000>+front_matter_class(fm_config) : type[FrontMatter]</color>
+  }
+}
+
+package "core: index" {
+  class index <<module>> #FFE0E0 {
+    +build_index(config) : NoteIndex
+    <color:#C00000>-_page(md_file, mapping, config) : Page | None</color>
+  }
+  class IndexedNote #FFE0E0 {
+    +page : Page | None
+    +anchors : HeadingAnchors
+    <color:#C00000>+page_path(front_matter_class) : Path</color>
+  }
+  class HeadingAnchors #FFE0E0 {
+    +anchor_for(heading) : str | None
+    <color:#C00000>-{static} _gfm_id(text, id_counts) : str</color>
+  }
+}
+
+package "core: validate" {
+  class checks <<module>> #FFE0E0 {
+    <color:#C00000>+checks_for(config) : list[Check]</color>
+  }
+  class UnnamablePage #FFE0E0 {
+    <color:#C00000>+front_matter_class : type[FrontMatter]</color>
+  }
+}
+
+package "core: write" {
+  class references <<module>> {
+    +rewrite_references(filepath, src_dir, dest_dir, copy_dir, links)
+  }
+  class links <<module>> {
+    +rewrite_wikilink(link, links) : str
+  }
+  class images <<module>> #FFE0E0 {
+    <color:#C00000>+rewrite_embed(embed, src_dir, dest_dir, copy_dir) : str</color>
+  }
+  class FrontMatter {
+    +ensure(title)
+    +serialize() : str
+    +{static} apply_slug_transform(slug, metadata) : str
+  }
+  class JekyllFrontMatter #FFE0E0 {
+    <color:#C00000>-_default_layout : str</color>
+    <color:#C00000>+ensure(title)</color>
+    <color:#C00000>+{static} apply_slug_transform(slug, metadata) : str</color>
+  }
+}
+
+FrontMatter <|-- JekyllFrontMatter
+IndexedNote *-- HeadingAnchors
+pipeline -[dashed,norank]-> index
+pipeline -[dashed,norank]-> checks
+pipeline -[dashed,norank]-> references
+pipeline ..> front_matter
+front_matter -[dashed,norank]-> JekyllFrontMatter : type == 'jekyll'
+index -[dashed,norank]-> Config : url_format
+index ..> IndexedNote : creates
+checks ..> UnnamablePage : creates
+UnnamablePage -[dashed,norank]-> FrontMatter : apply_slug_transform
+references ..> links
+references ..> images
+links -[dashed,norank]-> HeadingAnchors : anchor_for
+' Layout only: run on top; index, validate, write below it, left to right; a new package after them.
+pipeline -[hidden]-> index
+pipeline -[hidden]-> checks
+pipeline -[hidden]-> references
+index -[hidden]right-> checks
+checks -[hidden]right-> references
+@enduml

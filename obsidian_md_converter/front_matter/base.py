@@ -20,13 +20,11 @@ class FrontMatter:
     the full file content.
     """
 
-    def __init__(self, content: str, config: dict = None):
+    def __init__(self, content: str):
         """
         Args:
             content: Full markdown file content.
-            config: The front_matter section of the configuration dictionary.
         """
-        self._config = config or {}
         self._raw_front_matter: str = ''
         self._body: str = content
         self._has_front_matter: bool = False
@@ -106,35 +104,24 @@ class FrontMatter:
         self._parse_metadata()
         return True
 
-    def _ensure_title(self, title: str):
-        """Add a title field if front matter exists but has no title.
+    def defaults(self) -> dict[str, str]:
+        """Fields a page gets when its front matter lacks them, besides its title; a site's front matter adds its own."""
+        return {}
 
-        Preserves the original filename as title since filenames get
-        slugified during conversion (e.g. "ABA problém" -> "aba-problem.md").
-        """
-        if 'title' in self._metadata:
+    def add(self, fields: dict[str, str]):
+        """Add each field the front matter lacks, at its end; a note without front matter gets one holding just them.
+        Example: {'title': 'CAP theorem', 'layout': 'note'} added to 'layout: course' -> 'layout: course\ntitle: "CAP theorem"'"""
+        missing = {key: value for key, value in fields.items() if key not in self._metadata}
+        if not missing:
             return
-        self._raw_front_matter += '\n' + yaml_fields({'title': title})
-        self._metadata['title'] = title
-
-    def _create_front_matter(self, title: str):
-        """Create minimal front matter with just a title."""
-        self._has_front_matter = True
-        self._raw_front_matter = yaml_fields({'title': title})
-        self._metadata = {'title': title}
-        if not self._body.startswith('\n'):
-            self._body = '\n' + self._body
-
-    def ensure(self, title: str):
-        """Ensure the front matter has a title; a note without front matter gets one holding just the title.
-
-        Args:
-            title: Title to use (typically the original filename before slugification).
-        """
         if self._has_front_matter:
-            self._ensure_title(title)
+            self._raw_front_matter += '\n' + yaml_fields(missing)
         else:
-            self._create_front_matter(title)
+            self._has_front_matter = True
+            self._raw_front_matter = yaml_fields(missing)
+            if not self._body.startswith('\n'):
+                self._body = '\n' + self._body
+        self._metadata.update(missing)
 
     def serialize(self) -> str:
         """Reconstruct the full file content from front matter and body."""

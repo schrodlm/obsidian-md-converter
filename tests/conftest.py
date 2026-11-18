@@ -87,7 +87,6 @@ def convert(tmp_path):
             "source_mappings": [{"source": source, "destination": destination} for source, destination in mappings.items()],
             "images": {"source_dir": "assets/images", "destination_dir": "assets/img"},
             "front_matter": {
-                "enabled": True,
                 "type": "jekyll",
                 "jekyll": {"auto_add": True, "default_layout": "note"},
             },

@@ -54,7 +54,6 @@ source_mappings:
 links:
   url_format: "/{{collection}}/{{slug}}/"
 front_matter:
-  enabled: true
   type: "jekyll"
   jekyll:
     auto_add: true
@@ -285,7 +284,6 @@ class TestDefaults:
     def test_default_values(self, minimal_yaml):
         config = Config(config_path=minimal_yaml)
         assert config.url_format == "/{collection}/{slug}.html"
-        assert config.front_matter_enabled is True
         assert config.validate_only is False
         assert config.force_create is False
         assert config.fix_source is False

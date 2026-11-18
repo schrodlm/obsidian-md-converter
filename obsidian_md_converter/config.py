@@ -83,11 +83,6 @@ class Config:
         #TODO: Introduce FrontMatterConfig class
         # Passed directly to create_front_matter() factory — Config doesn't
         # need to know about Jekyll-specific or other type-specific details.
-        self.front_matter_enabled = self._resolve(
-            self._overrides.get('front_matter_enabled'),
-            nested_get(self._raw_config,'front_matter', 'enabled'),
-            default=True,
-        )
         self.front_matter_config = self._resolve(
             self._overrides.get('front_matter_config'),
             nested_get(self._raw_config,'front_matter'),

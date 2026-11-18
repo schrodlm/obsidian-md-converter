@@ -148,7 +148,7 @@ def _index_note(md_file: Path, content: str, mapping: Mapping, config: Config, p
         mapping=mapping,
         page=_page(md_file, mapping, processor),
         front_matter=IndexedFrontMatter(yaml=scanned.front_matter, values=fm.metadata, error=fm.yaml_error),
-        anchors=HeadingAnchors(scanned.body),
+        anchors=HeadingAnchors(scanned.body, processor.anchor_ids),
         links=scanned.links,
         images=_images([*scanned.embeds, *scanned.markdown_images], config),
     )

@@ -21,3 +21,7 @@ class Processor(ABC):
     @abstractmethod
     def address(self, neutral_path: Path, site_folder: str) -> str:
         """The URL that links point at, given the page's neutral path and the name of its mapping's site folder."""
+
+    @abstractmethod
+    def anchor_ids(self, heading_texts: list[str]) -> list[str]:
+        """The ids the site gives a page's headings, in the same order, given each heading's rendered text."""

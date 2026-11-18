@@ -112,7 +112,7 @@ def read_front_matter(content: str, fm_config: dict) -> FrontMatter:
     return fm
 
 
-def build_index(config: Config) -> NoteIndex:
+def build_index(config: Config, processor: Processor) -> NoteIndex:
     """
     Read every published note of every mapping into the index, each note once.
 
@@ -135,18 +135,18 @@ def build_index(config: Config) -> NoteIndex:
                 unreadable[md_file] = str(e)
                 continue
             if is_published(content):
-                notes.append(_index_note(md_file, content, mapping, config))
+                notes.append(_index_note(md_file, content, mapping, config, processor))
 
     return NoteIndex(notes, unreadable, folders)
 
 
-def _index_note(md_file: Path, content: str, mapping: Mapping, config: Config) -> IndexedNote:
+def _index_note(md_file: Path, content: str, mapping: Mapping, config: Config, processor: Processor) -> IndexedNote:
     scanned = scanning.scan(content)
     fm = read_front_matter(content, config.front_matter_config)
     return IndexedNote(
         source=md_file,
         mapping=mapping,
-        page=_page(md_file, mapping, config),
+        page=_page(md_file, mapping, processor),
         front_matter=IndexedFrontMatter(yaml=scanned.front_matter, values=fm.metadata, error=fm.yaml_error),
         anchors=HeadingAnchors(scanned.body),
         links=scanned.links,
@@ -163,13 +163,10 @@ def _images(references: list[Embed | MarkdownImage], config: Config) -> list[Ima
     return images
 
 
-def _page(md_file: Path, mapping: Mapping, config: Config) -> Page | None:
+def _page(md_file: Path, mapping: Mapping, processor: Processor) -> Page | None:
     try:
         output_slug = slugify(ObsidianPath(md_file))
     except ConversionError:
         return None
     neutral_path = mapping.subdirectory_for(md_file) / output_slug
-    # Remove leading underscore from collection name for URL (Jekyll convention)
-    collection_name = mapping.destination.name.lstrip('_')
-    url = config.url_format.format(collection=collection_name, slug=neutral_path.with_suffix('').as_posix())
-    return Page(neutral_path=neutral_path, url=url)
+    return Page(neutral_path=neutral_path, url=processor.address(neutral_path, mapping.destination.name))

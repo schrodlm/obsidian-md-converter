@@ -10,7 +10,7 @@ from collections.abc import Iterator
 from pathlib import Path
 
 from obsidian_md_converter.config import Config
-from obsidian_md_converter.front_matter import FrontMatter, front_matter_class
+from obsidian_md_converter.front_matter import FrontMatter, JekyllFrontMatter
 from obsidian_md_converter.index import IndexedNote, NoteIndex
 from obsidian_md_converter.mapping import Mapping
 from obsidian_md_converter.problems import Problem, Severity
@@ -72,7 +72,7 @@ def checks_for(config: Config) -> list[Check]:
         Clash(),
         TabsInFrontMatter(),
         InvalidFrontMatter(),
-        UnnamablePage(front_matter_class(config.front_matter_config)),
+        UnnamablePage(JekyllFrontMatter),
         MissingImage(),
         MissingHeading(),
     ]

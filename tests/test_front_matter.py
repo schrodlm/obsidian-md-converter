@@ -1,4 +1,7 @@
+import yaml
+
 from obsidian_md_converter.front_matter import FrontMatter, JekyllFrontMatter
+from obsidian_md_converter.front_matter.base import yaml_fields
 
 
 class TestYamlParsing:
@@ -35,6 +38,23 @@ class TestYamlParsing:
         assert fm.fix_tabs()
         assert fm.yaml_error is None
         assert fm.metadata == {"tags": ["a"]}
+
+
+class TestYamlFields:
+    def test_each_field_is_one_double_quoted_line(self):
+        assert yaml_fields({'layout': 'note', 'title': 'CAP theorem'}) == 'layout: "note"\ntitle: "CAP theorem"'
+
+    def test_quotes_and_backslashes_are_escaped(self):
+        title = 'Say "hi" to C:\\temp'
+        assert yaml.safe_load(yaml_fields({'title': title})) == {'title': title}
+
+    def test_non_ascii_is_written_as_is(self):
+        assert yaml_fields({'title': 'ABA problém'}) == 'title: "ABA problém"'
+
+    def test_title_with_a_quote_keeps_the_front_matter_valid(self):
+        fm = FrontMatter('---\ntags: [mff]\n---\nBody\n')
+        fm.ensure('The "CAP" theorem')
+        assert FrontMatter(fm.serialize()).metadata == {'tags': ['mff'], 'title': 'The "CAP" theorem'}
 
 
 class TestJekyllEnsure:

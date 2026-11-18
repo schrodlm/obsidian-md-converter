@@ -57,7 +57,31 @@ class TestYamlFields:
         assert FrontMatter(fm.serialize()).metadata == {'tags': ['mff'], 'title': 'The "CAP" theorem'}
 
 
-class TestJekyllEnsure:
+class TestAdd:
+    def test_only_missing_fields_are_added_at_the_end(self):
+        fm = FrontMatter('---\nlayout: course\n---\nBody\n')
+        fm.add({'title': 'NPRG077', 'layout': 'note'})
+        assert fm.serialize() == '---\nlayout: course\ntitle: "NPRG077"\n---\nBody\n'
+
+    def test_nothing_missing_leaves_the_content_unchanged(self):
+        content = '---\ntitle: Kept\n---\nBody\n'
+        fm = FrontMatter(content)
+        fm.add({'title': 'Other'})
+        assert fm.serialize() == content
+
+    def test_note_without_front_matter_gets_one_holding_the_fields(self):
+        fm = FrontMatter('Body\n')
+        fm.add({'title': '2PC'})
+        assert fm.serialize() == '---\ntitle: "2PC"\n---\n\nBody\n'
+        assert fm.metadata == {'title': '2PC'}
+
+    def test_adding_nothing_to_a_note_without_front_matter_creates_none(self):
+        fm = FrontMatter('Body\n')
+        fm.add({})
+        assert fm.serialize() == 'Body\n'
+
+
+class TestJekyllDefaults:
     AUTO_ADD = {'jekyll': {'auto_add': True, 'default_layout': 'note'}}
 
     def test_front_matter_without_layout_gets_the_default_layout(self):

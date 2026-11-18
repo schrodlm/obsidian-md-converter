@@ -7,40 +7,40 @@ import urllib.parse
 from pathlib import Path
 
 from obsidian_md_converter.paths import ObsidianPath, OutputPath
+from obsidian_md_converter.processors.base import PageImage, Processor
 from obsidian_md_converter.scanning import Embed, MarkdownImage
 
 
-def rewrite_embed(embed: Embed, src_dir: ObsidianPath, dest_dir: OutputPath, copy_dir: Path) -> str:
+def rewrite_embed(embed: Embed, src_dir: ObsidianPath, dest_dir: OutputPath, copy_dir: Path,
+                  processor: Processor) -> str:
     """
-    The Markdown that replaces a scanned image embed, pointing at the image in `dest_dir`; the image is copied into `copy_dir`.
+    The Markdown that replaces a scanned image embed: the image is copied into `copy_dir` and handed to the processor,
+    pointed at in `dest_dir`; an image missing from the vault becomes its alt text.
 
-    Examples:
-        ![[image.png]]                 -> ![Image](/assets/img/image.png)
-        ![[image.png|200]]             -> ![Image](/assets/img/image.png){:width="200"}
-        ![[image.png|alt text|200x100]] -> ![alt text](/assets/img/image.png){:width="200" height="100"}
-        ![[gone.png|Data flow]]        -> Data flow  (when gone.png is not in the vault)
+    Examples, as the image the processor writes, or the text written instead:
+        ![[image.png]]                  -> PageImage('Image', '/assets/img/image.png')
+        ![[image.png|200]]              -> PageImage('Image', '/assets/img/image.png', '200')
+        ![[image.png|alt text|200x100]] -> PageImage('alt text', '/assets/img/image.png', '200', '100')
+        ![[gone.png|Data flow]]         -> 'Data flow'  (when gone.png is not in the vault)
     """
     relative_img_path = Path(embed.target)
     if not copy_image(src_dir / relative_img_path, copy_dir / relative_img_path):
         return embed.alt or ''
 
-    img_tag = f"![{embed.alt or 'Image'}]({output_image_url(dest_dir / relative_img_path, OutputPath._root)})"
-    if embed.width and embed.height:
-        return f'{img_tag}{{:width="{embed.width}" height="{embed.height}"}}'
-    if embed.width:
-        return f'{img_tag}{{:width="{embed.width}"}}'
-    return img_tag
+    url = output_image_url(dest_dir / relative_img_path, OutputPath._root)
+    return processor.image_markdown(PageImage(embed.alt or 'Image', url, embed.width, embed.height))
 
 
 def rewrite_markdown_image(image: MarkdownImage, original: str, src_dir: ObsidianPath, dest_dir: OutputPath,
-                           copy_dir: Path) -> str:
+                           copy_dir: Path, processor: Processor) -> str:
     """
-    The Markdown that replaces a scanned Markdown image: a local image is copied into `copy_dir` and pointed at by its URL in `dest_dir`.
+    The Markdown that replaces a scanned Markdown image: a local image is copied into `copy_dir` and handed to the
+    processor, pointed at in `dest_dir`; an image on the web is left as written.
 
-    Examples:
-        ![Figure 1](splay%20results.png) -> ![Figure 1](/assets/img/splay%20results.png)
+    Examples, as the image the processor writes, or the text written instead:
+        ![Figure 1](splay%20results.png)      -> PageImage('Figure 1', '/assets/img/splay%20results.png')
         ![logo](https://example.com/logo.png) -> unchanged
-        ![Figure 1](gone.png) -> Figure 1  (when gone.png is not in the vault)
+        ![Figure 1](gone.png)                 -> 'Figure 1'  (when gone.png is not in the vault)
     """
     name = local_image_name(image)
     if name is None:
@@ -48,7 +48,7 @@ def rewrite_markdown_image(image: MarkdownImage, original: str, src_dir: Obsidia
     img_path = Path(name)
     if not copy_image(src_dir / img_path, copy_dir / img_path):
         return image.alt
-    return f"![{image.alt}]({output_image_url(dest_dir / img_path, OutputPath._root)})"
+    return processor.image_markdown(PageImage(image.alt, output_image_url(dest_dir / img_path, OutputPath._root)))
 
 
 def local_image_name(image: Embed | MarkdownImage) -> str | None:

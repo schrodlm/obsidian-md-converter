@@ -27,9 +27,6 @@ links:
 
 # Front matter settings
 front_matter:
-  # Enable front matter processing
-  enabled: true
-
   # Front matter type: "jekyll" is the only one
   type: "jekyll"
 

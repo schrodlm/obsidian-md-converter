@@ -73,10 +73,8 @@ def write_page(note: IndexedNote, index: NoteIndex, processor: Processor, config
     dst.parent.mkdir(parents=True, exist_ok=True)
 
     fm = read_front_matter(note.source.read_text(encoding='utf-8'), config.front_matter_config)
-    #TODO: Move logic to to fm.try_apply()
-    if config.front_matter_enabled:
-        # The note's name, which the page's file name loses: "ABA problém" for aba-problem.md
-        fm.ensure(note.source.stem)
+    # The note's name, which the page's file name loses: "ABA problém" for aba-problem.md
+    fm.ensure(note.source.stem)
 
     dst.write_text(fm.serialize(), encoding='utf-8')
 

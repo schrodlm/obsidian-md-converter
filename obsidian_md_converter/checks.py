@@ -14,7 +14,7 @@ from obsidian_md_converter.front_matter import FrontMatter
 from obsidian_md_converter.index import IndexedNote, NoteIndex
 from obsidian_md_converter.mapping import Mapping
 from obsidian_md_converter.problems import Problem, Severity
-from obsidian_md_converter.processors import JekyllProcessor
+from obsidian_md_converter.processors import Processor
 from obsidian_md_converter.scanning import WikiLink
 
 
@@ -62,7 +62,7 @@ class NoteCheck(Check):
         """The problems of this kind in one note."""
 
 
-def checks_for(config: Config) -> list[Check]:
+def checks_for(config: Config, processor: Processor) -> list[Check]:
     """The checks a run makes, in the order their problems are reported."""
     checks = [MissingFolder()]
     if not config.validate_only and not config.force_create:
@@ -73,7 +73,7 @@ def checks_for(config: Config) -> list[Check]:
         Clash(),
         TabsInFrontMatter(),
         InvalidFrontMatter(),
-        UnnamablePage(JekyllProcessor),
+        UnnamablePage(processor),
         MissingImage(),
         MissingHeading(),
     ]
@@ -172,7 +172,7 @@ class UnnamablePage(NoteCheck):
     """A page the site generator cannot name from the note's front matter, such as a Jekyll post without a date."""
     severity = Severity.ERROR
 
-    def __init__(self, processor: type[JekyllProcessor], severity: Severity | None = None):
+    def __init__(self, processor: Processor, severity: Severity | None = None):
         super().__init__(severity)
         self.processor = processor
 

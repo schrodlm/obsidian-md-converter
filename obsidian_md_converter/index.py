@@ -11,7 +11,7 @@ from obsidian_md_converter.images import local_image_name
 from obsidian_md_converter.mapping import Mapping
 from obsidian_md_converter.naming import slugify
 from obsidian_md_converter.paths import ObsidianPath
-from obsidian_md_converter.processors import JekyllProcessor
+from obsidian_md_converter.processors import Processor
 from obsidian_md_converter.publishing import is_published
 from obsidian_md_converter import scanning
 from obsidian_md_converter.scanning import Embed, MarkdownImage, WikiLink
@@ -57,17 +57,16 @@ class IndexedNote:
     # Images on the web are not the vault's, and are left out.
     images: list[ImageReference]
 
-    def page_path(self, processor: type[JekyllProcessor]) -> Path:
+    def page_path(self, processor: Processor) -> Path:
         """
-        The page's path below its mapping's site folder, named by the site generator's convention.
+        The page's path below its mapping's site folder, named by the processor.
 
         Example: 'publish/posts/Turing Machine.md' with 'layout: post' and 'date: 2024-12-20' -> '2024-12-20-turing-machine.md'
 
         Raises:
             ValueError: if the front matter lacks what the convention needs.
         """
-        name = processor.apply_slug_transform(self.page.neutral_path.name, self.front_matter.values)
-        return self.page.neutral_path.with_name(name)
+        return processor.page_path(self.page.neutral_path, self.front_matter.values)
 
 
 @dataclass(frozen=True)

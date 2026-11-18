@@ -1,23 +1,23 @@
 import datetime
+from pathlib import Path
 
+from obsidian_md_converter.processors.base import Processor
 from obsidian_md_converter.utils import parse_date
 
 
-class JekyllProcessor:
+class JekyllProcessor(Processor):
     """How a run's pages are expressed for a Jekyll site."""
 
-    @classmethod
-    def apply_slug_transform(cls, slug: str, metadata: dict) -> str:
-        """Apply Jekyll post naming convention.
-
-        Jekyll's '_posts' collection requires filenames like
-        YYYY-MM-DD-title.md. When layout is 'post', this prepends
-        the date from front matter to the slug.
+    def page_path(self, neutral_path: Path, front_matter: dict) -> Path:
         """
-        if metadata.get("layout") != "post":
-            return slug
+        The neutral path, except that a post gets the dated name Jekyll's '_posts' collection requires.
 
-        date_value = metadata.get("date")
+        Example: 'turing-machine.md' with 'layout: post' and 'date: 2024-12-20' -> '2024-12-20-turing-machine.md'
+        """
+        if front_matter.get("layout") != "post":
+            return neutral_path
+
+        date_value = front_matter.get("date")
         if not date_value:
             raise ValueError("Missing 'date' field for post layout")
 
@@ -30,4 +30,4 @@ class JekyllProcessor:
             raise ValueError("Invalid date format in front matter for post layout")
 
         date_prefix = f"{parsed_date.year:04d}-{parsed_date.month:02d}-{parsed_date.day:02d}"
-        return f"{date_prefix}-{slug}"
+        return neutral_path.with_name(f"{date_prefix}-{neutral_path.name}")

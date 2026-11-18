@@ -138,17 +138,17 @@ class TestFrontMatter:
 
 class TestUnnamablePage:
     def test_post_without_a_date_is_an_error(self):
-        [problem] = find(UnnamablePage(JekyllProcessor), indexed_note("Turing Machine", "Body\n", front_matter="layout: post"))
+        [problem] = find(UnnamablePage(JekyllProcessor()), indexed_note("Turing Machine", "Body\n", front_matter="layout: post"))
         assert problem.message == "Missing 'date' field for post layout"
 
     def test_dated_post_and_other_layouts_pass(self):
         dated = indexed_note("Turing Machine", "Body\n", front_matter="layout: post\ndate: 2024-12-20")
         page = indexed_note("Hello", "Body\n", front_matter="layout: note")
-        assert find(UnnamablePage(JekyllProcessor), dated, page) == []
+        assert find(UnnamablePage(JekyllProcessor()), dated, page) == []
 
     def test_invalid_yaml_is_not_also_reported_as_a_missing_date(self):
         note = indexed_note("Hello", "Body\n", front_matter="layout: post\ntags:\n      - a\n  - b")
-        assert find(UnnamablePage(JekyllProcessor), note) == []
+        assert find(UnnamablePage(JekyllProcessor()), note) == []
 
 
 class TestFixingTabs:

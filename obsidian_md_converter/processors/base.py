@@ -17,3 +17,7 @@ class Processor(ABC):
         Raises:
             ValueError: if the front matter lacks what the site needs to name the page.
         """
+
+    @abstractmethod
+    def address(self, neutral_path: Path, site_folder: str) -> str:
+        """The URL that links point at, given the page's neutral path and the name of its mapping's site folder."""

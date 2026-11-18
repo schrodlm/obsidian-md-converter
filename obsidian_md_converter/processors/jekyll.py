@@ -8,6 +8,10 @@ from obsidian_md_converter.utils import parse_date
 class JekyllProcessor(Processor):
     """How a run's pages are expressed for a Jekyll site."""
 
+    def __init__(self, url_format: str):
+        # Such as '/{collection}/{slug}.html', filled in with the collection's name and the page's slug.
+        self.url_format = url_format
+
     def page_path(self, neutral_path: Path, front_matter: dict) -> Path:
         """
         The neutral path, except that a post gets the dated name Jekyll's '_posts' collection requires.
@@ -31,3 +35,12 @@ class JekyllProcessor(Processor):
 
         date_prefix = f"{parsed_date.year:04d}-{parsed_date.month:02d}-{parsed_date.day:02d}"
         return neutral_path.with_name(f"{date_prefix}-{neutral_path.name}")
+
+    def address(self, neutral_path: Path, site_folder: str) -> str:
+        """
+        The URL format filled in: a collection's site folder starts with '_', which its URLs leave out.
+
+        Example: 'tmux.md' in '_notes' -> '/notes/tmux.html'
+        """
+        collection = site_folder.lstrip('_')
+        return self.url_format.format(collection=collection, slug=neutral_path.with_suffix('').as_posix())

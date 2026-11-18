@@ -8,7 +8,7 @@ from obsidian_md_converter.index import IndexedNote, NoteIndex, build_index, rea
 from obsidian_md_converter.links import NoteLinks
 from obsidian_md_converter.mapping import Mapping
 from obsidian_md_converter.problems import Problem
-from obsidian_md_converter.processors import JekyllProcessor, Processor
+from obsidian_md_converter.processors import Processor, processor_for
 from obsidian_md_converter.references import rewrite_references
 from obsidian_md_converter.staging import Staging
 
@@ -23,11 +23,11 @@ def run(config: Config) -> tuple[list[Problem], int]:
     Returns:
         Tuple of (problems, number of published notes)
     """
+    processor = processor_for(config)
     print("\nIndexing notes...")
-    index = build_index(config)
+    index = build_index(config, processor)
     print(f"Indexed {len(index)} notes")
 
-    processor = JekyllProcessor()
     problems = validate(index, checks_for(config, processor))
     if config.fix_source:
         problems = fix(problems)

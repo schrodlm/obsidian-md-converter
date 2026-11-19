@@ -43,7 +43,7 @@ def indexed_note(name: str, body: str = "", front_matter: str | None = None, fol
         mapping=mapping(folder),
         page=Page(Path(f"{slug}.md"), f"/{folder}/{slug}.html") if slug else None,
         front_matter=IndexedFrontMatter(yaml=front_matter, values=fm.metadata, error=fm.yaml_error),
-        anchors=HeadingAnchors(body, JekyllProcessor("/{collection}/{slug}.html").anchor_ids),
+        anchors=HeadingAnchors(body, JekyllProcessor().anchor_ids),
         links=scan_body(body).links,
         images=images or [],
     )
@@ -137,17 +137,17 @@ class TestFrontMatter:
 
 class TestUnnamablePage:
     def test_post_without_a_date_is_an_error(self):
-        [problem] = find(UnnamablePage(JekyllProcessor("/{collection}/{slug}.html")), indexed_note("Turing Machine", "Body\n", front_matter="layout: post"))
+        [problem] = find(UnnamablePage(JekyllProcessor()), indexed_note("Turing Machine", "Body\n", front_matter="layout: post"))
         assert problem.message == "Missing 'date' field for post layout"
 
     def test_dated_post_and_other_layouts_pass(self):
         dated = indexed_note("Turing Machine", "Body\n", front_matter="layout: post\ndate: 2024-12-20")
         page = indexed_note("Hello", "Body\n", front_matter="layout: note")
-        assert find(UnnamablePage(JekyllProcessor("/{collection}/{slug}.html")), dated, page) == []
+        assert find(UnnamablePage(JekyllProcessor()), dated, page) == []
 
     def test_invalid_yaml_is_not_also_reported_as_a_missing_date(self):
         note = indexed_note("Hello", "Body\n", front_matter="layout: post\ntags:\n      - a\n  - b")
-        assert find(UnnamablePage(JekyllProcessor("/{collection}/{slug}.html")), note) == []
+        assert find(UnnamablePage(JekyllProcessor()), note) == []
 
 
 class TestFixingTabs:

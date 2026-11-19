@@ -193,6 +193,14 @@ class TestLinks:
         assert "[the second](/notes/second-note.html)" in site.page("_notes/hello.md")
         assert site.warnings == []
 
+    def test_mapping_url_starts_the_address_instead_of_the_default(self, convert):
+        site = convert(self.TARGET | {"notes/Hello.md": "See [[Second Note]].\n"}, urls={"notes": "/study"})
+        assert "[Second Note](/study/second-note.html)" in site.page("_notes/hello.md")
+
+    def test_root_mapping_url_puts_addresses_at_the_site_root(self, convert):
+        site = convert(self.TARGET | {"notes/Hello.md": "See [[Second Note]].\n"}, urls={"notes": "/"})
+        assert "[Second Note](/second-note.html)" in site.page("_notes/hello.md")
+
     def test_link_matches_the_note_name_case_insensitively(self, convert):
         site = convert(self.TARGET | {"notes/Hello.md": "See [[second note]].\n"})
         assert "[second note](/notes/second-note.html)" in site.page("_notes/hello.md")

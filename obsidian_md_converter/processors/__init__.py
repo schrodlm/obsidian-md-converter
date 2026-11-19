@@ -15,7 +15,10 @@ def processor_for(config: Config) -> Processor:
     kind = options.pop('type', 'jekyll')
     if kind != 'jekyll':
         raise ConfigError(f"Unknown processor type '{kind}'; the only type is 'jekyll'.")
-    unknown = sorted(set(options) - {'default_layout'})
+    unknown = sorted(set(options) - {'default_layout', 'permalink'})
     if unknown:
-        raise ConfigError(f"Unknown option for the jekyll processor: {', '.join(unknown)}; the only one is 'default_layout'.")
+        raise ConfigError(f"Unknown option for the jekyll processor: {', '.join(unknown)}; "
+                          "the options are 'default_layout' and 'permalink'.")
+    if options.get('permalink', 'pretty') != 'pretty':
+        raise ConfigError(f"Unknown jekyll permalink '{options['permalink']}'; the only one is 'pretty'.")
     return JekyllProcessor(**options)

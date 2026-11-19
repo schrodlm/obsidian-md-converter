@@ -12,9 +12,11 @@ _GFM_NON_WORD_RE = re.compile(r'[^\w\- \t]')
 class JekyllProcessor(Processor):
     """How a run's pages are expressed for a Jekyll site."""
 
-    def __init__(self, default_layout: str | None = None):
+    def __init__(self, default_layout: str | None = None, permalink: str | None = None):
         # The layout a page gets when its front matter names none, such as 'note'; None adds no layout.
         self.default_layout = default_layout
+        # Jekyll's own permalink setting: 'pretty' ends addresses in '/' instead of '.html'.
+        self.permalink = permalink
 
     def page_path(self, neutral_path: Path, front_matter: dict) -> Path:
         """
@@ -50,11 +52,15 @@ class JekyllProcessor(Processor):
 
     def address(self, start: str, neutral_path: Path) -> str:
         """
-        The start, then the page's path ending in '.html', as Jekyll's default '/:collection/:path:output_ext'.
+        The start, then the page's path ending in '.html', as Jekyll's default '/:collection/:path:output_ext',
+        or in '/' with the pretty permalink.
 
-        Example: ('/courses', 'mff/nprg077.md') -> '/courses/mff/nprg077.html'
+        Examples:
+            ('/courses', 'mff/nprg077.md')                    -> '/courses/mff/nprg077.html'
+            ('/courses', 'mff/nprg077.md'), permalink: pretty -> '/courses/mff/nprg077/'
         """
-        return f"{start}/{neutral_path.with_suffix('').as_posix()}.html"
+        ending = '/' if self.permalink == 'pretty' else '.html'
+        return f"{start}/{neutral_path.with_suffix('').as_posix()}{ending}"
 
     def anchor_ids(self, heading_texts: list[str]) -> list[str]:
         """

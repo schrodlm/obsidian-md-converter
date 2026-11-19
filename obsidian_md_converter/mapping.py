@@ -11,6 +11,8 @@ from obsidian_md_converter.naming import slugify_text
 class Mapping():
     source: ObsidianPath
     destination: OutputPath
+    # How its pages' addresses start, such as '/study', when not the processor's default for the destination.
+    url: str | None = None
 
     def __post_init__(self):
         if not self.source:
@@ -38,4 +40,8 @@ class Mapping():
         source = ObsidianPath(entry.get('source'))
         destination = OutputPath(entry.get('destination'))
 
-        return Mapping(source, destination)
+        url = entry.get('url')
+        if url is not None and not (isinstance(url, str) and url.startswith('/')):
+            raise ConfigError(f"Mapping url must start with '/', such as '/study': {url!r}")
+        # '/study/' and '/study' start the same addresses; the root '/' starts them at ''.
+        return Mapping(source, destination, None if url is None else url.rstrip('/'))

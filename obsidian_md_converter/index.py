@@ -169,5 +169,5 @@ def _page(md_file: Path, mapping: Mapping, processor: Processor) -> Page | None:
     except ConversionError:
         return None
     neutral_path = mapping.subdirectory_for(md_file) / output_slug
-    start = processor.default_start(mapping.destination.name)
+    start = mapping.url if mapping.url is not None else processor.default_start(mapping.destination.name)
     return Page(neutral_path=neutral_path, url=processor.address(start, neutral_path))

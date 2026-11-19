@@ -314,6 +314,25 @@ images:
         with pytest.raises(ConfigError, match="must not be the same"):
             Config(config_path=cfg)
 
+    def test_two_mappings_into_one_site_folder_raise(self, tmp_path, tmp_dirs):
+        obsidian, output = tmp_dirs
+        cfg = tmp_path / "config.yaml"
+        cfg.write_text(f"""\
+paths:
+  obsidian_root: "{obsidian}"
+  output_root: "{output}"
+images:
+  source_dir: "assets/images"
+  destination_dir: "assets/img"
+source_mappings:
+  - source: "uni/master/courses"
+    destination: "_courses"
+  - source: "uni/bachelor/courses"
+    destination: "_courses"
+""")
+        with pytest.raises(ConfigError, match="Several mappings publish into .*_courses"):
+            Config(config_path=cfg)
+
     def test_removed_url_format_raises(self, tmp_path, tmp_dirs):
         obsidian, output = tmp_dirs
         cfg = tmp_path / "config.yaml"

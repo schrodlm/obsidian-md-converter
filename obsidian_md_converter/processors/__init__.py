@@ -9,7 +9,7 @@ def processor_for(config: Config) -> Processor:
     """
     The processor a run writes its pages with, chosen and set up by the config's 'processor' section.
 
-    Example: {'type': 'jekyll', 'default_layout': 'note'} -> JekyllProcessor(url_format, default_layout='note')
+    Example: {'type': 'jekyll', 'default_layout': 'note'} -> JekyllProcessor(default_layout='note')
     """
     options = dict(config.processor_config)
     kind = options.pop('type', 'jekyll')
@@ -18,4 +18,4 @@ def processor_for(config: Config) -> Processor:
     unknown = sorted(set(options) - {'default_layout'})
     if unknown:
         raise ConfigError(f"Unknown option for the jekyll processor: {', '.join(unknown)}; the only one is 'default_layout'.")
-    return JekyllProcessor(url_format=config.url_format, **options)
+    return JekyllProcessor(**options)

@@ -71,14 +71,6 @@ class Config:
             self.source_mappings.add(Mapping.from_yaml(yaml_mapping))
 
 
-        # --- Links (optional with defaults) ---
-        #TODO: Introduce link class
-        self.url_format = self._resolve(
-            self._overrides.get('url_format'),
-            nested_get(self._raw_config,'links', 'url_format'),
-            default="/{collection}/{slug}.html",
-        )
-
         # --- Processor ---
         # Which site the pages are written for, and its options; processor_for() reads them, Config doesn't need to.
         self.processor_config = self._resolve(
@@ -109,6 +101,12 @@ class Config:
             raise ConfigError(
                 "'obsidian_root' and 'output_root' must not be the same directory. "
                 "This would overwrite your Obsidian vault."
+            )
+
+        if nested_get(self._raw_config, 'links', 'url_format') is not None:
+            raise ConfigError(
+                "'links.url_format' was removed: the processor now gives each site folder's addresses, as its "
+                "generator does by default ('_courses' -> '/courses/...'). Delete the setting."
             )
 
         if 'front_matter' in self._raw_config:

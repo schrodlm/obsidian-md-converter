@@ -33,7 +33,7 @@ class Processor(ABC):
 
     The core reads the vault, resolves every note, heading and image, checks them and writes the pages. Wherever
     sites differ, it asks the processor, which answers from resolved values with plain values:
-      - a page's name and address on the site: page_path, address, anchor_ids
+      - a page's name and address on the site: page_path, default_start, address, anchor_ids
       - the front matter fields the site needs: front_matter_defaults
       - the Markdown text of a structure: link_markdown, image_markdown
 
@@ -50,8 +50,12 @@ class Processor(ABC):
         """
 
     @abstractmethod
-    def address(self, neutral_path: Path, site_folder: str) -> str:
-        """The URL that links point at, given the page's neutral path and the name of its mapping's site folder."""
+    def default_start(self, site_folder: str) -> str:
+        """How the addresses of a site folder's pages start, as the site's generator does it by default."""
+
+    @abstractmethod
+    def address(self, start: str, neutral_path: Path) -> str:
+        """The URL that links point at, given its site folder's start and the page's neutral path below that folder."""
 
     @abstractmethod
     def anchor_ids(self, heading_texts: list[str]) -> list[str]:

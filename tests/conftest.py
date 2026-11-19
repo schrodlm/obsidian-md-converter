@@ -54,7 +54,8 @@ def convert(tmp_path):
         validate: run in --validate mode
         force: create missing output folders (--force)
         fix: resolve tabs in front matter in the vault's notes (--fix)
-        mappings: vault folder -> site folder; only these folders are created, and only when a note is in them
+        mappings: vault folder -> site folder; only these folders are created, and only when a note is in them.
+            A tuple of vault folders publishes them all into one site folder.
         urls: vault folder -> the url its mapping starts its addresses with
         existing_site: files already in the site before the run (site path -> content)
     """
@@ -65,7 +66,7 @@ def convert(tmp_path):
         validate: bool = False,
         force: bool = True,
         fix: bool = False,
-        mappings: dict[str, str] | None = None,
+        mappings: dict[str | tuple[str, ...], str] | None = None,
         existing_site: dict[str, str | bytes] | None = None,
         urls: dict[str, str] | None = None,
     ) -> ConvertedSite:
@@ -87,7 +88,9 @@ def convert(tmp_path):
         config_file.write_text(yaml.safe_dump({
             "paths": {"obsidian_root": str(vault_root), "output_root": str(site_root)},
             "source_mappings": [
-                {"source": source, "destination": destination} | ({"url": urls[source]} if source in (urls or {}) else {})
+                ({"sources": list(source)} if isinstance(source, tuple) else {"source": source})
+                | {"destination": destination}
+                | ({"url": urls[source]} if source in (urls or {}) else {})
                 for source, destination in mappings.items()
             ],
             "images": {"source_dir": "assets/images", "destination_dir": "assets/img"},

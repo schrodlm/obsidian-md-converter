@@ -83,8 +83,8 @@ class TestAdd:
 
 
 class TestJekyllDefaults:
-    WITH_LAYOUT = JekyllProcessor("/{collection}/{slug}.html", default_layout="note")
-    WITHOUT_LAYOUT = JekyllProcessor("/{collection}/{slug}.html")
+    WITH_LAYOUT = JekyllProcessor(default_layout="note")
+    WITHOUT_LAYOUT = JekyllProcessor()
 
     def test_front_matter_without_layout_gets_the_default_layout(self):
         fm = FrontMatter('---\ntags:\n  - mff\n---\nBody\n')

@@ -12,9 +12,7 @@ _GFM_NON_WORD_RE = re.compile(r'[^\w\- \t]')
 class JekyllProcessor(Processor):
     """How a run's pages are expressed for a Jekyll site."""
 
-    def __init__(self, url_format: str, default_layout: str | None = None):
-        # Such as '/{collection}/{slug}.html', filled in with the collection's name and the page's slug.
-        self.url_format = url_format
+    def __init__(self, default_layout: str | None = None):
         # The layout a page gets when its front matter names none, such as 'note'; None adds no layout.
         self.default_layout = default_layout
 
@@ -42,14 +40,21 @@ class JekyllProcessor(Processor):
         date_prefix = f"{parsed_date.year:04d}-{parsed_date.month:02d}-{parsed_date.day:02d}"
         return neutral_path.with_name(f"{date_prefix}-{neutral_path.name}")
 
-    def address(self, neutral_path: Path, site_folder: str) -> str:
+    def default_start(self, site_folder: str) -> str:
         """
-        The URL format filled in: a collection's site folder starts with '_', which its URLs leave out.
+        A collection's name: its site folder's name without the leading '_'.
 
-        Example: 'tmux.md' in '_notes' -> '/notes/tmux.html'
+        Example: '_courses' -> '/courses'
         """
-        collection = site_folder.lstrip('_')
-        return self.url_format.format(collection=collection, slug=neutral_path.with_suffix('').as_posix())
+        return '/' + site_folder.lstrip('_')
+
+    def address(self, start: str, neutral_path: Path) -> str:
+        """
+        The start, then the page's path ending in '.html', as Jekyll's default '/:collection/:path:output_ext'.
+
+        Example: ('/courses', 'mff/nprg077.md') -> '/courses/mff/nprg077.html'
+        """
+        return f"{start}/{neutral_path.with_suffix('').as_posix()}.html"
 
     def anchor_ids(self, heading_texts: list[str]) -> list[str]:
         """

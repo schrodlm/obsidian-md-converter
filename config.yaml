@@ -16,14 +16,10 @@ images:
   source_dir: "assets/images"
   destination_dir: "assets/img"
 
-# Link transformation settings
-links:
-  # URL format for generated links
-  # Available variables: {collection}, {slug}
-  url_format: "/{collection}/{slug}.html"
-
-  # A link to a note that is not published (not written yet, or outside every
-  # mapping) becomes its plain display text.
+# Links: the processor gives each page's address, as its site's generator does
+# by default (for Jekyll, "_courses" -> "/courses/<page>.html"). A link to a note
+# that is not published (not written yet, or outside every mapping) becomes its
+# plain display text.
 
 # The site the pages are written for
 processor:

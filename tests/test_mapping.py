@@ -87,6 +87,21 @@ class TestMappingFromYaml:
         m = Mapping.from_yaml(entry)
         assert m == Mapping(ObsidianPath(vault / "notes"), OutputPath(output / "out"))
 
+    @pytest.mark.parametrize("url, start", [(None, None), ("/study", "/study"), ("/study/", "/study"), ("/", "")])
+    def test_url_is_kept_without_its_trailing_slash(self, configure_roots, url, start):
+        vault, output = configure_roots
+        entry = {"source": str(vault / "notes"), "destination": str(output / "out")}
+        if url is not None:
+            entry["url"] = url
+        assert Mapping.from_yaml(entry).url == start
+
+    @pytest.mark.parametrize("url", ["study", "", 42])
+    def test_url_not_starting_with_a_slash_raises(self, configure_roots, url):
+        vault, output = configure_roots
+        entry = {"source": str(vault / "notes"), "destination": str(output / "out"), "url": url}
+        with pytest.raises(ConfigError, match="must start with '/'"):
+            Mapping.from_yaml(entry)
+
 
 # ---------------------------------------------------------------------------
 # Mapping equality and hashing (frozen dataclass)

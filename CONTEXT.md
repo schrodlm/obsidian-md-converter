@@ -18,13 +18,10 @@ One Markdown file in the vault.
 _Avoid_: document, file, post (for a note in general)
 
 **Mapping**:
-A vault folder paired with the site folder its notes are published into.
+A site folder and the vault folders whose notes are published into it. A note
+belongs to the most specific mapped vault folder that holds it, so mapping
+`uni` and `uni/master/courses` publishes each course once.
 _Avoid_: route, source mapping
-
-**Folder note**:
-The note named like its folder, which is the page for that folder, for example
-`MFF/MFF.md` for a university. The notes below it belong to it.
-_Avoid_: index note, hub page
 
 ### Publishing
 
@@ -55,6 +52,12 @@ _Avoid_: output file, converted note
 The URL-safe name of a page, made from the note's name in lowercase ASCII words
 joined by hyphens.
 _Avoid_: filename, permalink
+
+**Address**:
+The URL a site serves a page at, which links point at. It is made of its site
+folder's start, the page's path below its vault folder, and its site's shape:
+`/courses/` + `nswi035-principy-distribuovanych-systemu` + `.html`.
+_Avoid_: permalink, URL format
 
 **Title**:
 The name a page shows, kept in its front matter: the note's name, such as

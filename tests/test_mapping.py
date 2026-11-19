@@ -87,6 +87,24 @@ class TestMappingFromYaml:
         m = Mapping.from_yaml(entry)
         assert m == Mapping((ObsidianPath(vault / "notes"),), OutputPath(output / "out"))
 
+    def test_sources_list_publishes_several_folders(self, configure_roots):
+        vault, output = configure_roots
+        entry = {"sources": [str(vault / "master"), str(vault / "bachelor")], "destination": str(output / "_courses")}
+        assert [source.path for source in Mapping.from_yaml(entry).sources] == [vault / "master", vault / "bachelor"]
+
+    @pytest.mark.parametrize("entry", [
+        {"source": "notes", "sources": ["notes"], "destination": "_notes"},
+        {"destination": "_notes"},
+    ])
+    def test_source_and_sources_together_or_neither_raises(self, entry):
+        with pytest.raises(ConfigError, match="either 'source"):
+            Mapping.from_yaml(entry)
+
+    @pytest.mark.parametrize("sources", [[], "notes"])
+    def test_sources_that_is_not_a_non_empty_list_raises(self, sources):
+        with pytest.raises(ConfigError, match="must be a list"):
+            Mapping.from_yaml({"sources": sources, "destination": "_notes"})
+
     @pytest.mark.parametrize("url, start", [(None, None), ("/study", "/study"), ("/study/", "/study"), ("/", "")])
     def test_url_is_kept_without_its_trailing_slash(self, configure_roots, url, start):
         vault, output = configure_roots
@@ -135,6 +153,10 @@ class TestOutputLocation:
 
     def make_mapping(self):
         return Mapping((ObsidianPath("logs"),), OutputPath("_logs"))
+
+    def test_subdirectory_is_relative_to_the_folder_holding_the_file(self):
+        mapping = Mapping((ObsidianPath("master"), ObsidianPath("bachelor")), OutputPath("_courses"))
+        assert mapping.subdirectory_for(ObsidianPath("bachelor/os/BI-OSY.md").path) == Path("os")
 
     def test_file_directly_in_source_has_no_subdirectory(self):
         mapping = self.make_mapping()

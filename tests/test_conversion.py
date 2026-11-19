@@ -367,3 +367,31 @@ class TestUnusableNames:
         site = convert({"notes/Привет мир.md": "Body\n"})
         assert site.errors == []
         assert site.has("_notes/privet-mir.md")
+
+
+class TestSeveralVaultFolders:
+    """Several vault folders can feed one site folder; each note keeps its path below its own vault folder."""
+
+    COURSES = {("uni/master/courses", "uni/bachelor/courses"): "_courses"}
+
+    def test_notes_of_both_folders_land_in_one_site_folder(self, convert):
+        site = convert({
+            "uni/master/courses/NSWI035.md": "See [[BI-OSY]].\n",
+            "uni/bachelor/courses/BI-OSY.md": "Body\n",
+        }, mappings=self.COURSES)
+        assert site.has("_courses/nswi035.md")
+        assert site.has("_courses/bi-osy.md")
+        assert "[BI-OSY](/courses/bi-osy.html)" in site.page("_courses/nswi035.md")
+
+    def test_same_page_from_both_folders_is_a_clash(self, convert):
+        site = convert({
+            "uni/master/courses/Operating systems.md": "Master\n",
+            "uni/bachelor/courses/Operating systems.md": "Bachelor\n",
+        }, mappings=self.COURSES)
+        assert any("would both be written to operating-systems.md" in error for error in site.errors)
+        assert not site.has("_courses/operating-systems.md")
+
+    def test_missing_folder_is_reported_while_the_other_still_publishes(self, convert):
+        site = convert({"uni/master/courses/NSWI035.md": "Body\n"}, mappings=self.COURSES)
+        assert any("uni/bachelor/courses" in warning for warning in site.warnings)
+        assert site.has("_courses/nswi035.md")

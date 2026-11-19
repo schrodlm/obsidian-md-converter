@@ -30,6 +30,9 @@ processor:
   # The layout a page gets when its front matter names none; without it, no layout is added
   # default_layout: "note"
 
+  # Set to "pretty" when the site's _config.yml does: addresses end in "/" instead of ".html"
+  # permalink: "pretty"
+
 # Runtime defaults (can be overridden via CLI flags)
 runtime:
   validate_only: false

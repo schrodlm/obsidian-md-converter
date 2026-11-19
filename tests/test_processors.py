@@ -34,6 +34,9 @@ class TestJekyllAddress:
     def test_default_start_drops_the_collection_underscore(self):
         assert self.JEKYLL.default_start("_courses") == "/courses"
 
+    def test_pretty_permalink_ends_the_address_in_a_slash(self):
+        assert JekyllProcessor(permalink="pretty").address("/courses", Path("mff/nprg077.md")) == "/courses/mff/nprg077/"
+
     def test_subfolders_stay_in_the_address(self):
         assert self.JEKYLL.address("/courses", Path("mff/nprg077.md")) == "/courses/mff/nprg077.html"
 
@@ -113,6 +116,14 @@ class TestProcessorFor:
     def test_unknown_type_raises(self):
         with pytest.raises(ConfigError, match="Unknown processor type 'astro'"):
             processor_for(self.config({"type": "astro"}))
+
+    def test_pretty_permalink_reaches_the_processor(self):
+        processor = processor_for(self.config({"type": "jekyll", "permalink": "pretty"}))
+        assert processor.address("/notes", Path("tmux.md")) == "/notes/tmux/"
+
+    def test_unknown_permalink_raises(self):
+        with pytest.raises(ConfigError, match="Unknown jekyll permalink 'date'"):
+            processor_for(self.config({"type": "jekyll", "permalink": "date"}))
 
     def test_unknown_option_raises(self):
         with pytest.raises(ConfigError, match="default_layuot"):

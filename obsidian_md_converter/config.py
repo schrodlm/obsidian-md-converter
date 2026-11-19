@@ -103,6 +103,14 @@ class Config:
                 "This would overwrite your Obsidian vault."
             )
 
+        destinations = [mapping.destination for mapping in self.source_mappings]
+        shared = sorted({str(destination) for destination in destinations if destinations.count(destination) > 1})
+        if shared:
+            raise ConfigError(
+                f"Several mappings publish into {', '.join(shared)}; give each site folder one mapping, "
+                "listing its vault folders as 'sources: [<folder>, <folder>]'."
+            )
+
         if nested_get(self._raw_config, 'links', 'url_format') is not None:
             raise ConfigError(
                 "'links.url_format' was removed: the processor now gives each site folder's addresses, as its "

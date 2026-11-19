@@ -71,10 +71,14 @@ class IndexedNote:
 
 @dataclass(frozen=True)
 class MappingFolders:
-    """Whether a mapping's vault folder and site folder exist."""
+    """Which of a mapping's vault folders are missing, and whether its site folder exists."""
     mapping: Mapping
-    source_exists: bool
+    missing_sources: tuple[ObsidianPath, ...]
     destination_exists: bool
+
+    @property
+    def any_source_exists(self) -> bool:
+        return len(self.missing_sources) < len(self.mapping.sources)
 
 
 class NoteIndex:
@@ -124,18 +128,20 @@ def build_index(config: Config, processor: Processor) -> NoteIndex:
 
     for mapping in config.source_mappings:
         mapping : Mapping
-        folders.append(MappingFolders(mapping, mapping.source.exists(), mapping.destination.exists()))
-        if not mapping.source.exists():
-            continue
+        missing = tuple(source for source in mapping.sources if not source.exists())
+        folders.append(MappingFolders(mapping, missing, mapping.destination.exists()))
 
-        for md_file in mapping.source.rglob("*.md"):
-            try:
-                content = md_file.read_text(encoding='utf-8')
-            except Exception as e:
-                unreadable[md_file] = str(e)
+        for source in mapping.sources:
+            if source in missing:
                 continue
-            if is_published(content):
-                notes.append(_index_note(md_file, content, mapping, config, processor))
+            for md_file in source.rglob("*.md"):
+                try:
+                    content = md_file.read_text(encoding='utf-8')
+                except Exception as e:
+                    unreadable[md_file] = str(e)
+                    continue
+                if is_published(content):
+                    notes.append(_index_note(md_file, content, mapping, config, processor))
 
     return NoteIndex(notes, unreadable, folders)
 

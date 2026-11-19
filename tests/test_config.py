@@ -51,8 +51,6 @@ images:
 source_mappings:
   - source: "notes"
     destination: "_notes"
-links:
-  url_format: "/{{collection}}/{{slug}}/"
 processor:
   type: "jekyll"
   default_layout: "note"
@@ -121,10 +119,10 @@ class TestCLIOverrides:
         """CLI override wins over YAML for optional fields."""
         config = Config(
             config_path=full_yaml,
-            url_format="/custom/{slug}/",
+            validate_only=False,
         )
-        # YAML has "/{collection}/{slug}/" but CLI should win
-        assert config.url_format == "/custom/{slug}/"
+        # YAML has validate_only: true but CLI should win
+        assert config.validate_only is False
 
     def test_cli_overrides_yaml_paths(self, minimal_yaml, tmp_path):
         alt_obsidian = tmp_path / "alt_vault"
@@ -281,7 +279,6 @@ images:
 class TestDefaults:
     def test_default_values(self, minimal_yaml):
         config = Config(config_path=minimal_yaml)
-        assert config.url_format == "/{collection}/{slug}.html"
         assert config.validate_only is False
         assert config.force_create is False
         assert config.fix_source is False

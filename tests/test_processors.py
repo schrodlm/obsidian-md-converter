@@ -14,32 +14,29 @@ class TestJekyllPostSlug:
     def test_iso_date_prefixes_post_slug(self):
         fm = FrontMatter('---\nlayout: post\ndate: 2024-12-20\n---\n')
         assert isinstance(fm.get("date"), datetime.date)
-        assert JekyllProcessor("/{collection}/{slug}.html").page_path(Path("turing-machine.md"), fm.metadata) == Path("2024-12-20-turing-machine.md")
+        assert JekyllProcessor().page_path(Path("turing-machine.md"), fm.metadata) == Path("2024-12-20-turing-machine.md")
 
     def test_dotted_date_prefixes_post_slug(self):
         fm = FrontMatter('---\nlayout: post\ndate: 20.9.2025\n---\n')
-        assert JekyllProcessor("/{collection}/{slug}.html").page_path(Path("an-unexamined-habit.md"), fm.metadata) == Path("2025-09-20-an-unexamined-habit.md")
+        assert JekyllProcessor().page_path(Path("an-unexamined-habit.md"), fm.metadata) == Path("2025-09-20-an-unexamined-habit.md")
 
     def test_non_post_slug_is_unchanged(self):
         fm = FrontMatter('---\nlayout: note\ndate: 2024-12-20\n---\n')
-        assert JekyllProcessor("/{collection}/{slug}.html").page_path(Path("note.md"), fm.metadata) == Path("note.md")
+        assert JekyllProcessor().page_path(Path("note.md"), fm.metadata) == Path("note.md")
 
 
 class TestJekyllAddress:
-    JEKYLL = JekyllProcessor("/{collection}/{slug}.html")
+    JEKYLL = JekyllProcessor()
 
     def test_collection_folder_loses_its_underscore(self):
-        assert self.JEKYLL.address(Path("tmux.md"), "_notes") == "/notes/tmux.html"
+        assert self.JEKYLL.address(self.JEKYLL.default_start("_notes"), Path("tmux.md")) == "/notes/tmux.html"
 
     def test_subfolders_stay_in_the_address(self):
-        assert self.JEKYLL.address(Path("mff/nprg077.md"), "_courses") == "/courses/mff/nprg077.html"
-
-    def test_url_format_decides_the_shape(self):
-        assert JekyllProcessor("/{collection}/{slug}/").address(Path("tmux.md"), "_notes") == "/notes/tmux/"
+        assert self.JEKYLL.address("/courses", Path("mff/nprg077.md")) == "/courses/mff/nprg077.html"
 
 
 class TestJekyllAnchorIds:
-    JEKYLL = JekyllProcessor("/{collection}/{slug}.html")
+    JEKYLL = JekyllProcessor()
 
     def test_text_is_lowercased_and_spaces_become_hyphens(self):
         assert self.JEKYLL.anchor_ids(["Prefix key"]) == ["prefix-key"]
@@ -58,14 +55,14 @@ class TestJekyllAnchorIds:
 
 class TestJekyllFrontMatterDefaults:
     def test_default_layout_is_the_only_default(self):
-        assert JekyllProcessor("/{collection}/{slug}.html", default_layout="note").front_matter_defaults() == {"layout": "note"}
+        assert JekyllProcessor(default_layout="note").front_matter_defaults() == {"layout": "note"}
 
     def test_no_default_layout_gives_no_defaults(self):
-        assert JekyllProcessor("/{collection}/{slug}.html").front_matter_defaults() == {}
+        assert JekyllProcessor().front_matter_defaults() == {}
 
 
 class TestJekyllLinkMarkdown:
-    JEKYLL = JekyllProcessor("/{collection}/{slug}.html")
+    JEKYLL = JekyllProcessor()
 
     def test_link_is_ordinary_markdown(self):
         link = PageLink("the prefix", "/notes/tmux.html#prefix-key")
@@ -76,7 +73,7 @@ class TestJekyllLinkMarkdown:
 
 
 class TestJekyllImageMarkdown:
-    JEKYLL = JekyllProcessor("/{collection}/{slug}.html")
+    JEKYLL = JekyllProcessor()
 
     def test_image_without_a_size_is_plain_markdown(self):
         assert self.JEKYLL.image_markdown(PageImage("Fig", "/assets/img/b%20c.png")) == "![Fig](/assets/img/b%20c.png)"
@@ -97,14 +94,13 @@ class TestJekyllImageMarkdown:
 class TestProcessorFor:
     @staticmethod
     def config(processor: dict) -> SimpleNamespace:
-        """The two Config fields processor_for reads."""
-        return SimpleNamespace(processor_config=processor, url_format="/{collection}/{slug}.html")
+        """The Config field processor_for reads."""
+        return SimpleNamespace(processor_config=processor)
 
-    def test_jekyll_gets_its_default_layout_and_the_url_format(self):
+    def test_jekyll_gets_its_default_layout(self):
         processor = processor_for(self.config({"type": "jekyll", "default_layout": "note"}))
         assert isinstance(processor, JekyllProcessor)
         assert processor.front_matter_defaults() == {"layout": "note"}
-        assert processor.url_format == "/{collection}/{slug}.html"
 
     def test_no_processor_section_is_jekyll_without_a_default_layout(self):
         processor = processor_for(self.config({}))

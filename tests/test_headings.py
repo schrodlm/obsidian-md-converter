@@ -1,7 +1,7 @@
 from obsidian_md_converter.headings import HeadingAnchors, strip_heading
 from obsidian_md_converter.processors import JekyllProcessor
 
-JEKYLL_IDS = JekyllProcessor("/{collection}/{slug}.html").anchor_ids
+JEKYLL_IDS = JekyllProcessor().anchor_ids
 
 
 class TestStripHeading:

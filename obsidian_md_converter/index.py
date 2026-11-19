@@ -8,7 +8,7 @@ from obsidian_md_converter.errors import ConversionError
 from obsidian_md_converter.front_matter import FrontMatter
 from obsidian_md_converter.headings import HeadingAnchors
 from obsidian_md_converter.images import local_image_name
-from obsidian_md_converter.mapping import Mapping
+from obsidian_md_converter.mapping import Mapping, most_specific_folder
 from obsidian_md_converter.naming import slugify
 from obsidian_md_converter.paths import ObsidianPath
 from obsidian_md_converter.processors import Processor
@@ -118,13 +118,15 @@ def read_front_matter(content: str) -> FrontMatter:
 
 def build_index(config: Config, processor: Processor) -> NoteIndex:
     """
-    Read every published note of every mapping into the index, each note once.
+    Read every published note of every mapping into the index, each note once: a note belongs to the most specific
+    mapped vault folder that holds it, so mapping 'uni' and 'uni/master/courses' indexes each course once.
 
     Example: 'notes/2PC.md' is indexed with url '/notes/2pc.html', found by '2PC' or '2pc'.
     """
     notes = []
     unreadable = {}
     folders = []
+    mapped = [source for mapping in config.source_mappings for source in mapping.sources]
 
     for mapping in config.source_mappings:
         mapping : Mapping
@@ -135,6 +137,8 @@ def build_index(config: Config, processor: Processor) -> NoteIndex:
             if source in missing:
                 continue
             for md_file in source.rglob("*.md"):
+                if most_specific_folder(md_file, mapped) != source:
+                    continue
                 try:
                     content = md_file.read_text(encoding='utf-8')
                 except Exception as e:

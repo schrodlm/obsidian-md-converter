@@ -6,6 +6,16 @@ from obsidian_md_converter.errors import ConfigError
 from obsidian_md_converter.naming import slugify_text
 
 
+def most_specific_folder(source_file: Path, folders) -> ObsidianPath | None:
+    """
+    The deepest of `folders` that holds a source file, or None.
+
+    Example: 'uni/master/courses/NSWI035.md' among ['uni', 'uni/master/courses'] -> 'uni/master/courses'
+    """
+    holding = [folder for folder in folders if Path(source_file).is_relative_to(Path(folder))]
+    return max(holding, key=lambda folder: len(Path(folder).parts), default=None)
+
+
 # One or more vault directories published into one output directory
 @dataclass(frozen=True)
 class Mapping():
@@ -21,8 +31,8 @@ class Mapping():
             raise ValueError("Mapping requires a destination.")
 
     def source_of(self, source_file: Path) -> ObsidianPath:
-        """The vault folder of this mapping that holds a source file."""
-        return next(source for source in self.sources if Path(source_file).is_relative_to(Path(source)))
+        """The most specific vault folder of this mapping that holds a source file."""
+        return most_specific_folder(source_file, self.sources)
 
     def subdirectory_for(self, source_file: Path) -> Path:
         """The slugified subdirectory a source file keeps below the destination ('.' for a file directly in its source)."""

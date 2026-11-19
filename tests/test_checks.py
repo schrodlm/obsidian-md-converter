@@ -30,7 +30,7 @@ def configure_roots():
 
 
 def mapping(folder: str = "notes") -> Mapping:
-    return Mapping(ObsidianPath(VAULT / folder), OutputPath(SITE / f"_{folder}"))
+    return Mapping((ObsidianPath(VAULT / folder),), OutputPath(SITE / f"_{folder}"))
 
 
 def indexed_note(name: str, body: str = "", front_matter: str | None = None, folder: str = "notes",
@@ -88,14 +88,14 @@ class TestProblem:
 
 class TestFolders:
     def test_missing_vault_folder_is_reported(self):
-        index = NoteIndex([], folders=[MappingFolders(mapping("gone"), source_exists=False, destination_exists=False)])
+        index = NoteIndex([], folders=[MappingFolders(mapping("gone"), missing_sources=mapping("gone").sources, destination_exists=False)])
         [problem] = MissingFolder().find(index)
         assert problem.message == "Source directory not found: /vault/gone; nothing is published from it"
 
     def test_missing_site_folder_is_reported_only_when_the_vault_folder_exists(self):
         index = NoteIndex([], folders=[
-            MappingFolders(mapping("notes"), source_exists=True, destination_exists=False),
-            MappingFolders(mapping("gone"), source_exists=False, destination_exists=False),
+            MappingFolders(mapping("notes"), missing_sources=(), destination_exists=False),
+            MappingFolders(mapping("gone"), missing_sources=mapping("gone").sources, destination_exists=False),
         ])
         [problem] = MissingOutputFolder().find(index)
         assert problem.message == "Output directory not found: /site/_notes (use --force to create it)"

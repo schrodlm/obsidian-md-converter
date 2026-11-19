@@ -90,13 +90,13 @@ def fix(problems: list[Problem]) -> list[Problem]:
 
 
 class MissingFolder(Check):
-    """A mapping whose vault folder does not exist; nothing is published from it, so its site folder is emptied."""
+    """A mapped vault folder that does not exist; nothing is published from it, and a site folder fed only by it is emptied."""
     severity = Severity.WARNING
 
     def find(self, index: NoteIndex) -> Iterator[Problem]:
         for folders in index.folders:
-            if not folders.source_exists:
-                yield Problem(self, f"Source directory not found: {folders.mapping.source}; nothing is published from it")
+            for source in folders.missing_sources:
+                yield Problem(self, f"Source directory not found: {source}; nothing is published from it")
 
 
 class MissingOutputFolder(Check):
@@ -105,8 +105,8 @@ class MissingOutputFolder(Check):
 
     def find(self, index: NoteIndex) -> Iterator[Problem]:
         for folders in index.folders:
-            # A mapping without its vault folder is already reported, and writes nothing.
-            if folders.source_exists and not folders.destination_exists:
+            # A mapping without any of its vault folders is already reported, and writes nothing.
+            if folders.any_source_exists and not folders.destination_exists:
                 yield Problem(self, f"Output directory not found: {folders.mapping.destination} (use --force to create it)")
 
 

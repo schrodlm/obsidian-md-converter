@@ -25,27 +25,27 @@ def configure_roots(tmp_path):
 class TestMappingConstruction:
     def test_requires_source(self):
         with pytest.raises(ValueError, match="source"):
-            Mapping(source=None, destination="dst")
+            Mapping(sources=(), destination="dst")
 
     def test_requires_destination(self):
         with pytest.raises(ValueError, match="destination"):
-            Mapping(source="src", destination=None)
+            Mapping(sources=("src",), destination=None)
 
     def test_requires_both(self):
         with pytest.raises(ValueError):
-            Mapping(source=None, destination=None)
+            Mapping(sources=(), destination=None)
 
     def test_empty_string_source_raises(self):
         with pytest.raises(ValueError, match="source"):
-            Mapping(source="", destination="dst")
+            Mapping(sources=("",), destination="dst")
 
     def test_empty_string_destination_raises(self):
         with pytest.raises(ValueError, match="destination"):
-            Mapping(source="src", destination="")
+            Mapping(sources=("src",), destination="")
 
     def test_valid_construction(self):
-        m = Mapping(source="src", destination="dst")
-        assert m.source == "src"
+        m = Mapping(sources=("src",), destination="dst")
+        assert m.sources == ("src",)
         assert m.destination == "dst"
 
 
@@ -58,7 +58,7 @@ class TestMappingFromYaml:
         vault, output = configure_roots
         entry = {"source": str(vault / "notes"), "destination": str(output / "out")}
         m = Mapping.from_yaml(entry)
-        assert m.source.path == Path(vault / "notes")
+        assert [source.path for source in m.sources] == [Path(vault / "notes")]
         assert m.destination.path == Path(output / "out")
 
     def test_missing_source_raises(self):
@@ -85,7 +85,7 @@ class TestMappingFromYaml:
             "copy_images": True,
         }
         m = Mapping.from_yaml(entry)
-        assert m == Mapping(ObsidianPath(vault / "notes"), OutputPath(output / "out"))
+        assert m == Mapping((ObsidianPath(vault / "notes"),), OutputPath(output / "out"))
 
     @pytest.mark.parametrize("url, start", [(None, None), ("/study", "/study"), ("/study/", "/study"), ("/", "")])
     def test_url_is_kept_without_its_trailing_slash(self, configure_roots, url, start):
@@ -108,7 +108,7 @@ class TestMappingFromYaml:
 # ---------------------------------------------------------------------------
 
 def make_mapping(source: str, destination: str) -> Mapping:
-    return Mapping(ObsidianPath(source), OutputPath(destination))
+    return Mapping((ObsidianPath(source),), OutputPath(destination))
 
 
 class TestMappingEquality:
@@ -127,14 +127,14 @@ class TestMappingEquality:
     def test_frozen_prevents_mutation(self):
         m = make_mapping("src", "dst")
         with pytest.raises(AttributeError):
-            m.source = "other"
+            m.sources = ("other",)
 
 
 class TestOutputLocation:
     """A source file keeps its slugified subdirectory below the mapping's destination."""
 
     def make_mapping(self):
-        return Mapping(ObsidianPath("logs"), OutputPath("_logs"))
+        return Mapping((ObsidianPath("logs"),), OutputPath("_logs"))
 
     def test_file_directly_in_source_has_no_subdirectory(self):
         mapping = self.make_mapping()

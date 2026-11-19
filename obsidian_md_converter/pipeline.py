@@ -44,12 +44,12 @@ def replaced_folders(index: NoteIndex, config: Config) -> list[Path]:
     """
     The site folders a run replaces: the image folder, and each mapping's site folder.
 
-    The site mirrors the vault, so a mapping whose vault folder is gone replaces its site folder with an empty one.
-    A mapping with neither folder has nothing to replace.
+    The site mirrors the vault, so a mapping whose vault folders are all gone replaces its site folder with an empty one.
+    A mapping with none of its folders has nothing to replace.
     """
     folders = [config.output_image_dir.path]
     for mapping_folders in index.folders:
-        if mapping_folders.source_exists or mapping_folders.destination_exists:
+        if mapping_folders.any_source_exists or mapping_folders.destination_exists:
             folders.append(mapping_folders.mapping.destination.path)
     return folders
 
@@ -61,7 +61,7 @@ def write_site(index: NoteIndex, processor: Processor, config: Config, staging: 
         notes = index.notes_in(mapping)
         if not notes:
             continue
-        print(f"\nProcessing: {mapping.source} -> {mapping.destination}")
+        print(f"\nProcessing: {', '.join(str(source) for source in mapping.sources)} -> {mapping.destination}")
         for number, note in enumerate(notes, start=1):
             write_page(note, index, processor, config, staging)
             print(f"Transferred {note.source.name}. [{number}/{len(notes)}]")

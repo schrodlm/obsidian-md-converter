@@ -31,6 +31,9 @@ class TestJekyllAddress:
     def test_collection_folder_loses_its_underscore(self):
         assert self.JEKYLL.address(self.JEKYLL.default_start("_notes"), Path("tmux.md")) == "/notes/tmux.html"
 
+    def test_default_start_drops_the_collection_underscore(self):
+        assert self.JEKYLL.default_start("_courses") == "/courses"
+
     def test_subfolders_stay_in_the_address(self):
         assert self.JEKYLL.address("/courses", Path("mff/nprg077.md")) == "/courses/mff/nprg077.html"
 

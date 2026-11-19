@@ -314,6 +314,22 @@ images:
         with pytest.raises(ConfigError, match="must not be the same"):
             Config(config_path=cfg)
 
+    def test_removed_url_format_raises(self, tmp_path, tmp_dirs):
+        obsidian, output = tmp_dirs
+        cfg = tmp_path / "config.yaml"
+        cfg.write_text(f"""\
+paths:
+  obsidian_root: "{obsidian}"
+  output_root: "{output}"
+images:
+  source_dir: "assets/images"
+  destination_dir: "assets/img"
+links:
+  url_format: "/{{collection}}/{{slug}}.html"
+""")
+        with pytest.raises(ConfigError, match="'links.url_format' was removed"):
+            Config(config_path=cfg)
+
     def test_old_front_matter_section_raises_with_its_replacement(self, tmp_path, tmp_dirs):
         obsidian, output = tmp_dirs
         cfg = tmp_path / "config.yaml"

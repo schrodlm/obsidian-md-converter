@@ -391,6 +391,17 @@ class TestSeveralVaultFolders:
         assert any("would both be written to operating-systems.md" in error for error in site.errors)
         assert not site.has("_courses/operating-systems.md")
 
+    def test_note_in_a_nested_mapped_folder_is_published_once_from_it(self, convert):
+        site = convert({
+            "uni/master/MFF.md": "See [[NSWI035]].\n",
+            "uni/master/courses/NSWI035.md": "Body\n",
+        }, mappings={"uni": "_uni", "uni/master/courses": "_courses"})
+        assert site.has("_uni/master/mff.md")
+        assert site.has("_courses/nswi035.md")
+        assert not site.has("_uni/master/courses/nswi035.md")
+        assert "[NSWI035](/courses/nswi035.html)" in site.page("_uni/master/mff.md")
+        assert site.errors == []
+
     def test_missing_folder_is_reported_while_the_other_still_publishes(self, convert):
         site = convert({"uni/master/courses/NSWI035.md": "Body\n"}, mappings=self.COURSES)
         assert any("uni/bachelor/courses" in warning for warning in site.warnings)

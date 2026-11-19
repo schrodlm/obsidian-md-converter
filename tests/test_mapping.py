@@ -1,7 +1,7 @@
 import pytest
 from pathlib import Path
 
-from obsidian_md_converter.mapping import Mapping
+from obsidian_md_converter.mapping import Mapping, most_specific_folder
 from obsidian_md_converter.paths import ObsidianPath, OutputPath
 from obsidian_md_converter.errors import ConfigError
 
@@ -146,6 +146,16 @@ class TestMappingEquality:
         m = make_mapping("src", "dst")
         with pytest.raises(AttributeError):
             m.sources = ("other",)
+
+
+class TestMostSpecificFolder:
+    def test_deepest_folder_holding_the_file_wins(self):
+        folders = [ObsidianPath("uni"), ObsidianPath("uni/master/courses")]
+        assert most_specific_folder(ObsidianPath("uni/master/courses/NSWI035.md").path, folders) == folders[1]
+        assert most_specific_folder(ObsidianPath("uni/master/MFF.md").path, folders) == folders[0]
+
+    def test_file_outside_every_folder_has_none(self):
+        assert most_specific_folder(ObsidianPath("notes/2PC.md").path, [ObsidianPath("uni")]) is None
 
 
 class TestOutputLocation:

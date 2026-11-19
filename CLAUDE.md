@@ -1,5 +1,13 @@
 # CLAUDE.md
 
+## Talking to the owner
+
+Applies to every agent and subagent on this project, including reports written for another agent to pass on.
+
+- **As concise as possible.** Lead with the answer or the next step. No surveys, no history unless asked.
+- **The owner only knows what was said in the conversation.** They don't see files you read, commands you ran or research you did. Before using anything they haven't seen, give the minimal context in a line or two: what it is, and why it matters here, with one concrete example.
+- **Plain words over project shorthand.** Name a file, setting or issue by what it does, not only by its name or number.
+
 ## Commits
 
 - **Atomic.** One logical piece of work per commit, as small as coherent. Two fixes never share a commit.

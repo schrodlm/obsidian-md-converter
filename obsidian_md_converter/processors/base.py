@@ -4,6 +4,19 @@ from pathlib import Path
 
 
 @dataclass(frozen=True)
+class LinkTarget:
+    """
+    The page a link points at, resolved by the core: its site folder's start, its path there, and its file relative
+    to the linking page.
+
+    Example: from 'courses/nswi035.md' to 'notes/tmux.md' -> LinkTarget('/notes', 'tmux.md', '../notes/tmux.md')
+    """
+    start: str
+    neutral_path: Path
+    file: Path
+
+
+@dataclass(frozen=True)
 class PageLink:
     """
     A link as a page shows it, resolved by the core: its text and the URL it points at, with the heading's anchor.
@@ -33,7 +46,7 @@ class Processor(ABC):
 
     The core reads the vault, resolves every note, heading and image, checks them and writes the pages. Wherever
     sites differ, it asks the processor, which answers from resolved values with plain values:
-      - a page's name and address on the site: page_path, default_start, address, anchor_ids
+      - a page's name and address on the site: page_path, default_start, link_address, anchor_ids
       - the front matter fields the site needs: front_matter_defaults
       - the Markdown text of a structure: link_markdown, image_markdown
 
@@ -54,8 +67,8 @@ class Processor(ABC):
         """How the addresses of a site folder's pages start, as the site's generator does it by default."""
 
     @abstractmethod
-    def address(self, start: str, neutral_path: Path) -> str:
-        """The URL that links point at, given its site folder's start and the page's neutral path below that folder."""
+    def link_address(self, target: LinkTarget) -> str:
+        """What a link to a page points at: its URL, or its file."""
 
     @abstractmethod
     def anchor_ids(self, heading_texts: list[str]) -> list[str]:

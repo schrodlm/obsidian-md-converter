@@ -7,7 +7,7 @@ import pytest
 from obsidian_md_converter.errors import ConfigError
 from obsidian_md_converter.front_matter import FrontMatter
 from obsidian_md_converter.processors import JekyllProcessor, processor_for
-from obsidian_md_converter.processors.base import PageImage, PageLink
+from obsidian_md_converter.processors.base import LinkTarget, PageImage, PageLink
 
 
 class TestJekyllPostSlug:
@@ -29,16 +29,16 @@ class TestJekyllAddress:
     JEKYLL = JekyllProcessor()
 
     def test_collection_folder_loses_its_underscore(self):
-        assert self.JEKYLL.address(self.JEKYLL.default_start("_notes"), Path("tmux.md")) == "/notes/tmux.html"
+        assert self.JEKYLL.link_address(LinkTarget(self.JEKYLL.default_start("_notes"), Path("tmux.md"), Path())) == "/notes/tmux.html"
 
     def test_default_start_drops_the_collection_underscore(self):
         assert self.JEKYLL.default_start("_courses") == "/courses"
 
     def test_pretty_permalink_ends_the_address_in_a_slash(self):
-        assert JekyllProcessor(permalink="pretty").address("/courses", Path("mff/nprg077.md")) == "/courses/mff/nprg077/"
+        assert JekyllProcessor(permalink="pretty").link_address(LinkTarget("/courses", Path("mff/nprg077.md"), Path())) == "/courses/mff/nprg077/"
 
     def test_subfolders_stay_in_the_address(self):
-        assert self.JEKYLL.address("/courses", Path("mff/nprg077.md")) == "/courses/mff/nprg077.html"
+        assert self.JEKYLL.link_address(LinkTarget("/courses", Path("mff/nprg077.md"), Path())) == "/courses/mff/nprg077.html"
 
 
 class TestJekyllAnchorIds:
@@ -119,7 +119,7 @@ class TestProcessorFor:
 
     def test_pretty_permalink_reaches_the_processor(self):
         processor = processor_for(self.config({"type": "jekyll", "permalink": "pretty"}))
-        assert processor.address("/notes", Path("tmux.md")) == "/notes/tmux/"
+        assert processor.link_address(LinkTarget("/notes", Path("tmux.md"), Path())) == "/notes/tmux/"
 
     def test_unknown_permalink_raises(self):
         with pytest.raises(ConfigError, match="Unknown jekyll permalink 'date'"):

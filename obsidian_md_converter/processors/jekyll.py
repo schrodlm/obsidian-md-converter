@@ -2,7 +2,7 @@ import datetime
 import re
 from pathlib import Path
 
-from obsidian_md_converter.processors.base import PageImage, PageLink, Processor
+from obsidian_md_converter.processors.base import LinkTarget, PageImage, PageLink, Processor
 from obsidian_md_converter.utils import parse_date
 
 # What a GFM heading id drops: anything but a letter, a digit, '_', '-', a space or a tab.
@@ -50,9 +50,9 @@ class JekyllProcessor(Processor):
         """
         return '/' + site_folder.lstrip('_')
 
-    def address(self, start: str, neutral_path: Path) -> str:
+    def link_address(self, target: LinkTarget) -> str:
         """
-        The start, then the page's path ending in '.html', as Jekyll's default '/:collection/:path:output_ext',
+        The page's URL: the start, then its path ending in '.html', as Jekyll's default '/:collection/:path:output_ext',
         or in '/' with the pretty permalink.
 
         Examples:
@@ -60,7 +60,7 @@ class JekyllProcessor(Processor):
             ('/courses', 'mff/nprg077.md'), permalink: pretty -> '/courses/mff/nprg077/'
         """
         ending = '/' if self.permalink == 'pretty' else '.html'
-        return f"{start}/{neutral_path.with_suffix('').as_posix()}{ending}"
+        return f"{target.start}/{target.neutral_path.with_suffix('').as_posix()}{ending}"
 
     def anchor_ids(self, heading_texts: list[str]) -> list[str]:
         """

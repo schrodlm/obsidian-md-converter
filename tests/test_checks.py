@@ -41,7 +41,7 @@ def indexed_note(name: str, body: str = "", front_matter: str | None = None, fol
     return IndexedNote(
         source=VAULT / folder / f"{name}.md",
         mapping=mapping(folder),
-        page=Page(Path(f"{slug}.md"), f"/{folder}/{slug}.html") if slug else None,
+        page=Page(Path(f"{slug}.md"), f"/{folder}") if slug else None,
         front_matter=IndexedFrontMatter(yaml=front_matter, values=fm.metadata, error=fm.yaml_error),
         anchors=HeadingAnchors(body, JekyllProcessor().anchor_ids),
         links=scan_body(body).links,

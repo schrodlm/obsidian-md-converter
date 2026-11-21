@@ -69,7 +69,8 @@ def write_site(index: NoteIndex, processor: Processor, config: Config, staging: 
 
 def write_page(note: IndexedNote, index: NoteIndex, processor: Processor, config: Config, staging: Staging):
     """Write the page of one checked note, named and linked from what the index holds about it."""
-    dst = staging.path_for(note.mapping.destination.path / note.page_path(processor))
+    page_file = note.mapping.destination.path / note.page_path(processor)
+    dst = staging.path_for(page_file)
     dst.parent.mkdir(parents=True, exist_ok=True)
 
     fm = read_front_matter(note.source.read_text(encoding='utf-8'))
@@ -78,6 +79,6 @@ def write_page(note: IndexedNote, index: NoteIndex, processor: Processor, config
 
     dst.write_text(fm.serialize(), encoding='utf-8')
 
-    links = NoteLinks(index=index, own_anchors=note.anchors)
+    links = NoteLinks(index=index, own_anchors=note.anchors, page_file=page_file)
     rewrite_references(dst, config.obsidian_image_dir, config.output_image_dir,
                        staging.path_for(config.output_image_dir.path), links, processor)

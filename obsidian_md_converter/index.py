@@ -19,10 +19,10 @@ from obsidian_md_converter.scanning import Embed, MarkdownImage, WikiLink
 
 @dataclass(frozen=True)
 class Page:
-    """Where a note is published: its slugified path below its mapping's site folder, and its address."""
+    """Where a note is published: its slugified path below its mapping's site folder, and how its addresses start."""
     # Before the site generator's own naming, such as Jekyll's date in front of a post: 'moje-projekty/first-entry.md'.
     neutral_path: Path
-    url: str
+    start: str
 
 
 @dataclass(frozen=True)
@@ -180,4 +180,4 @@ def _page(md_file: Path, mapping: Mapping, processor: Processor) -> Page | None:
         return None
     neutral_path = mapping.subdirectory_for(md_file) / output_slug
     start = mapping.url if mapping.url is not None else processor.default_start(mapping.destination.name)
-    return Page(neutral_path=neutral_path, url=processor.address(start, neutral_path))
+    return Page(neutral_path=neutral_path, start=start)

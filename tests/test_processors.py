@@ -107,6 +107,10 @@ class TestMarkdownProcessor:
         target = LinkTarget("/notes", Path("tmux.md"), Path("../notes/tmux.md"))
         assert self.MARKDOWN.link_address(target) == "../notes/tmux.md"
 
+    def test_url_links_point_at_the_page_url(self):
+        target = LinkTarget("/notes", Path("databases/tmux.md"), Path("../notes/databases/tmux.md"))
+        assert MarkdownProcessor(links="urls").link_address(target) == "/notes/databases/tmux/"
+
     def test_adds_no_front_matter_field(self):
         assert self.MARKDOWN.front_matter_defaults() == {}
 
@@ -137,9 +141,17 @@ class TestProcessorFor:
     def test_markdown_type_gives_the_markdown_processor(self):
         assert isinstance(processor_for(self.config({"type": "markdown"})), MarkdownProcessor)
 
-    def test_markdown_processor_takes_no_options(self):
+    def test_markdown_processor_rejects_jekyll_options(self):
         with pytest.raises(ConfigError, match="markdown processor: default_layout"):
             processor_for(self.config({"type": "markdown", "default_layout": "note"}))
+
+    def test_markdown_links_option_reaches_the_processor(self):
+        processor = processor_for(self.config({"type": "markdown", "links": "urls"}))
+        assert processor.link_address(LinkTarget("/notes", Path("tmux.md"), Path("tmux.md"))) == "/notes/tmux/"
+
+    def test_unknown_markdown_links_raises(self):
+        with pytest.raises(ConfigError, match="Unknown markdown links 'html'"):
+            processor_for(self.config({"type": "markdown", "links": "html"}))
 
     def test_unknown_type_raises(self):
         with pytest.raises(ConfigError, match="Unknown processor type 'astro'"):

@@ -86,6 +86,13 @@ class TestNoteEmbeds:
         assert scan_body(text).links == []
 
 
+class TestBlockReferences:
+    @pytest.mark.parametrize("text, display", [("[[note#^abc123]]", None), ("[[note#^abc123|see]]", "see")])
+    def test_block_reference_names_only_its_note(self, text, display):
+        [link] = scan_body(text).links
+        assert (link.note, link.heading, link.display) == ("note", "", display)
+
+
 class TestLinks:
     def test_link_parts_are_read_from_the_brackets(self):
         link = scan("[[logical contracts#Preconditions | precondition]]\n").links[0]

@@ -459,3 +459,8 @@ class TestObsidianOnlySyntax:
         site = convert({"notes/tmux.md": "Body\n", "notes/Hello.md": "Before\n![[tmux]]\nAfter\n"})
         assert "Before\n[tmux](/notes/tmux.html)\nAfter\n" in site.page("_notes/hello.md")
 
+    def test_block_reference_links_to_the_note_without_a_warning(self, convert):
+        site = convert({"notes/tmux.md": "Body ^abc123\n", "notes/Hello.md": "See [[tmux#^abc123]].\n"})
+        assert "See [tmux](/notes/tmux.html).\n" in site.page("_notes/hello.md")
+        assert site.warnings == []
+

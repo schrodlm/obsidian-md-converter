@@ -427,6 +427,10 @@ class TestNormalizedMarkdown:
         page = self.convert(convert).page("courses/nswi035.md")
         assert "[the prefix](../notes/tmux.md#prefix-key)" in page
 
+    def test_url_links_point_at_the_page_url(self, convert):
+        site = convert(self.NOTES, mappings=self.MAPPINGS, processor={"type": "markdown", "links": "urls"})
+        assert "[the prefix](/notes/tmux/#prefix-key)" in site.page("courses/nswi035.md")
+
     def test_link_within_a_folder_names_the_file(self, convert):
         assert "[tmux](tmux.md)" in self.convert(convert).page("notes/hello.md")
 

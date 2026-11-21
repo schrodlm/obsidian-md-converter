@@ -242,6 +242,9 @@ def _wikilink(span: Span, inner: str) -> WikiLink:
     note, _, subpath = parts[0].partition('#')
     # A nested subpath (#H1#H2) names its innermost heading last.
     heading = subpath.split('#')[-1].strip()
+    # A block reference (#^abc123) names one paragraph, which no page can point at: the link points at the note.
+    if heading.startswith('^'):
+        heading = ''
     display = parts[1] if len(parts) > 1 else None
     return WikiLink(span, inner, note.strip(), heading, display)
 

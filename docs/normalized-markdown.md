@@ -1,6 +1,8 @@
 # Normalized Markdown
 
-Version 1.0
+Version 1.1
+
+Changes since 1.0: links can point at URLs instead of files (`links: urls`).
 
 Normalized Markdown is the generator-neutral form of a page that the converter
 writes with `processor: {type: markdown}`. It is written for any Markdown
@@ -17,10 +19,11 @@ footnotes, math, and callouts, all described below.
 The specification fixes the format. Each site's config chooses:
 
 - which vault folders are published into which site folder (`source_mappings`);
-- where images are copied (`images.destination_dir`).
+- where images are copied (`images.destination_dir`);
+- whether links point at files, the default, or at URLs (`links: urls`).
 
-Nothing in the format depends on the site's URLs: links point at files, and
-the site decides what URL each file gets.
+By default nothing in the format depends on the site's URLs: links point at
+files, and the site decides what URL each file gets.
 
 ## Files
 
@@ -102,9 +105,24 @@ my-site/
 - `/notes/tmux.md` would mean "`notes/tmux.md` at the very top", where there is
   no such file: GitHub and the usual link plugins would follow it to nothing.
 
+### Links to URLs
+
+With `processor: {type: markdown, links: urls}`, a link points at the page's
+URL instead, for a site that serves each page at `/<site folder>/<page>/` and
+shouldn't have to turn file links into URLs itself. The URL starts with the
+site folder's exact name, or the mapping's `url:`, then the page's path, and
+ends in `/`:
+
+```markdown
+[tmux > Prefix key](/notes/tmux/#prefix-key)
+[NSWI028](/courses/nswi028-embedded-systems/)
+```
+
+### Every link
+
 - A link with nowhere to go, to a draft, an empty note or a note that doesn't
   exist, becomes its plain text.
-- A link to a heading the page doesn't have points at the page's file.
+- A link to a heading the page doesn't have points at the page.
 - A link's text is the one the note gave, or else the note's name, and
   `Note > Heading` for a heading.
 

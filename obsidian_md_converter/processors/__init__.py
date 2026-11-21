@@ -12,14 +12,17 @@ def processor_for(config: Config) -> Processor:
 
     Examples:
         {'type': 'jekyll', 'default_layout': 'note'} -> JekyllProcessor(default_layout='note')
-        {'type': 'markdown'}                         -> MarkdownProcessor()
+        {'type': 'markdown', 'links': 'urls'}       -> MarkdownProcessor(links='urls')
     """
     options = dict(config.processor_config)
     kind = options.pop('type', 'jekyll')
     if kind == 'markdown':
-        if options:
-            raise ConfigError(f"Unknown option for the markdown processor: {', '.join(sorted(options))}; it has none.")
-        return MarkdownProcessor()
+        unknown = sorted(set(options) - {'links'})
+        if unknown:
+            raise ConfigError(f"Unknown option for the markdown processor: {', '.join(unknown)}; the only one is 'links'.")
+        if options.get('links', 'files') not in ('files', 'urls'):
+            raise ConfigError(f"Unknown markdown links '{options['links']}'; they are 'files' or 'urls'.")
+        return MarkdownProcessor(**options)
     if kind != 'jekyll':
         raise ConfigError(f"Unknown processor type '{kind}'; the types are 'jekyll' and 'markdown'.")
     unknown = sorted(set(options) - {'default_layout', 'permalink'})

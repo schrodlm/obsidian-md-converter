@@ -39,7 +39,7 @@ pip install git+https://github.com/schrodlm/obsidian-md-converter
 ```
 
 This installs the `obsidian-md-converter` command. To pin a release, add it to
-the address, for example `...obsidian-md-converter@v0.2.0`.
+the address, for example `...obsidian-md-converter@v0.3.0`.
 
 ## Quick start
 
@@ -238,7 +238,7 @@ committed. In the vault's `.pre-commit-config.yaml`:
 ```yaml
 repos:
   - repo: https://github.com/schrodlm/obsidian-md-converter
-    rev: v0.2.0
+    rev: v0.3.0
     hooks:
       - id: obsidian-validate
         args: ["--config", ".obsidian-md-converter.yaml"]

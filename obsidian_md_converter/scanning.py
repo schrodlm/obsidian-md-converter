@@ -1,6 +1,7 @@
 """Reading a note: find the structures the converter acts on, each with its place in the text."""
 
 import re
+from pathlib import Path
 from dataclasses import dataclass
 
 _FRONT_MATTER_RE = re.compile(r'^---\s*\n(?P<raw>.*?)\n---\s*\n', re.DOTALL)
@@ -11,6 +12,11 @@ _INLINE_CODE_RE = re.compile(r'(?P<ticks>`+)(?!`)(?:(?!\n[ \t]*\n).)*?(?<!`)(?P=
 _WIKILINK_RE = re.compile(r'(?P<bang>!?)\[\[(?P<inner>[^\]\[]+)\]\]')
 _MARKDOWN_LINK_RE = re.compile(r'(?P<bang>!?)\[(?P<text>[^\]]*)\]\((?P<url>[^)]+)\)')
 _SIZE_RE = re.compile(r'^(?P<width>\d+)(?:x(?P<height>\d+))?$')
+# The file types Obsidian embeds as files rather than notes: images, audio, video and PDF.
+_EMBEDDED_FILE_TYPES = {
+    '.png', '.jpg', '.jpeg', '.gif', '.bmp', '.svg', '.webp', '.avif',
+    '.mp3', '.wav', '.m4a', '.ogg', '.3gp', '.flac', '.webm', '.mp4', '.ogv', '.mov', '.mkv', '.pdf',
+}
 # An Obsidian comment, %%hidden%%, which may span lines.
 _COMMENT_RE = re.compile(r'%%.*?%%', re.DOTALL)
 # An Obsidian highlight, ==text==, on one line, its text neither starting nor ending with a space.
@@ -155,9 +161,10 @@ def scan_body(body: str, front_matter: str | None = None, body_line: int = 1) ->
             continue
         span = locate(match.start(), match.end())
         inner = match.group('inner')
-        if match.group('bang'):
+        if match.group('bang') and not _embeds_a_note(inner):
             embeds.append(_embed(span, inner))
         else:
+            # A note embed, ![[Other note]], shows another note inline; a page links to it instead.
             links.append(_wikilink(span, inner))
 
     markdown_links, markdown_images = [], []
@@ -237,6 +244,17 @@ def _wikilink(span: Span, inner: str) -> WikiLink:
     heading = subpath.split('#')[-1].strip()
     display = parts[1] if len(parts) > 1 else None
     return WikiLink(span, inner, note.strip(), heading, display)
+
+
+def _embeds_a_note(inner: str) -> bool:
+    """
+    Whether an embed shows a note rather than a file: its target, before any heading, isn't one of the file types
+    Obsidian embeds.
+
+    Examples: 'Other note' -> True, 'Version 2.0 notes' -> True, 'a.png|200' -> False
+    """
+    target = inner.split('|')[0].split('#')[0].strip()
+    return Path(target).suffix.lower() not in _EMBEDDED_FILE_TYPES
 
 
 def _embed(span: Span, inner: str) -> Embed:

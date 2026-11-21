@@ -442,3 +442,12 @@ class TestNormalizedMarkdown:
         assert 'title: "Turing Machine"' in page
         assert page.count("layout:") == 1
 
+
+class TestObsidianOnlySyntax:
+    """Obsidian syntax with no form in plain Markdown has a defined outcome, for every processor."""
+
+    def test_comment_is_removed_from_the_page(self, convert):
+        site = convert({"notes/Hello.md": "Keep %%hide [[Gone]]%% this.\n"})
+        assert "Keep  this.\n" in site.page("_notes/hello.md")
+        assert site.warnings == []
+

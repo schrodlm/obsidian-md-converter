@@ -44,6 +44,22 @@ class TestCode:
         assert [link.note for link in note.links] == ["splay"]
 
 
+class TestComments:
+    def test_inline_and_multiline_comments_are_found(self):
+        note = scan_body("Keep %%hide%% this.\n%%\nmore\n%%\n")
+        assert [(c.span.start, c.span.end) for c in note.comments] == [(5, 13), (20, 30)]
+
+    def test_nothing_inside_a_comment_is_a_structure(self):
+        note = scan_body("%%[[Gone]] ![[a.png]]\n## Hidden\n%%\n")
+        assert note.links == [] and note.embeds == [] and note.headings == []
+
+    def test_comment_marks_inside_code_are_not_a_comment(self):
+        assert scan_body("`%%code%%`\n").comments == []
+
+    def test_unclosed_comment_is_not_a_comment(self):
+        assert scan_body("50%% done\n").comments == []
+
+
 class TestLinks:
     def test_link_parts_are_read_from_the_brackets(self):
         link = scan("[[logical contracts#Preconditions | precondition]]\n").links[0]

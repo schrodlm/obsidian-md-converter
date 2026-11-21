@@ -1,6 +1,6 @@
 # 4. A page's address is its site folder's start, its path and its site's shape
 
-Status: accepted (2026-11-18)
+Status: accepted (2026-11-18), amended for normalized Markdown (2026-11-21)
 
 ## Context
 
@@ -55,3 +55,14 @@ what it is today.
 - A user who customizes their generator's routing still mirrors it in the
   converter's config. A processor may later read its generator's own config
   instead, such as Jekyll's `_config.yml`.
+
+## Amendment: normalized Markdown links to files (2026-11-21)
+
+Normalized Markdown is written for any Markdown site, so it makes no
+assumption about a site's URLs. Its links point at the linked page's file,
+relative to the linking page (`../notes/tmux.md#prefix-key`), and each site
+turns file links into its URLs. The start, path and shape above now apply only
+to processors that write final URLs, which today is Jekyll. Images keep an
+absolute path (`/assets/img/a.png`): generators serve them from a static
+folder at that same path.
+

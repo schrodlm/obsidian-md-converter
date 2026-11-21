@@ -18,21 +18,21 @@ images:
   source_dir: "assets/images"
   destination_dir: "assets/img"
 
-# Links: the processor gives each page's address, as its site's generator does
-# by default (for Jekyll, "_courses" -> "/courses/<page>.html"). A mapping can
-# start its addresses elsewhere with url, such as url: "/study". A link to a note
-# that is not published (not written yet, or outside every mapping) becomes its
-# plain display text.
+# Links: "markdown" links each page's file, relative to the linking page;
+# "jekyll" links its URL, as Jekyll makes it by default ("_courses" ->
+# "/courses/<page>.html"), and a mapping can start its URLs elsewhere with url,
+# such as url: "/study". A link to a note that is not published (not written
+# yet, or outside every mapping) becomes its plain display text.
 
 # The site the pages are written for
 processor:
-  # "jekyll" is the only one
+  # "markdown" (plain Markdown for any site, docs/normalized-markdown.md) or "jekyll"
   type: "jekyll"
 
-  # The layout a page gets when its front matter names none; without it, no layout is added
+  # Jekyll only: the layout a page gets when its front matter names none; without it, no layout is added
   # default_layout: "note"
 
-  # Set to "pretty" when the site's _config.yml does: addresses end in "/" instead of ".html"
+  # Jekyll only: set to "pretty" when the site's _config.yml does: addresses end in "/" instead of ".html"
   # permalink: "pretty"
 
 # Runtime defaults (can be overridden via CLI flags)

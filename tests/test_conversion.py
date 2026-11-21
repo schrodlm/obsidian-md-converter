@@ -464,3 +464,8 @@ class TestObsidianOnlySyntax:
         assert "See [tmux](/notes/tmux.html).\n" in site.page("_notes/hello.md")
         assert site.warnings == []
 
+    def test_dataview_query_is_left_out_with_a_warning(self, convert):
+        site = convert({"notes/Hello.md": "Intro\n```dataview\nTABLE x\n```\nAfter\n"})
+        assert "Intro\n\nAfter\n" in site.page("_notes/hello.md")
+        assert any("Hello.md:2" in warning and "[dataview-query]" in warning for warning in site.warnings)
+

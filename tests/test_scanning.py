@@ -1,3 +1,5 @@
+import pytest
+
 from obsidian_md_converter.scanning import scan, scan_body, split_front_matter
 
 
@@ -58,6 +60,15 @@ class TestComments:
 
     def test_unclosed_comment_is_not_a_comment(self):
         assert scan_body("50%% done\n").comments == []
+
+
+class TestHighlights:
+    def test_highlight_gives_its_two_marks(self):
+        assert [(m.span.start, m.span.end) for m in scan_body("a ==big deal== b").highlight_marks] == [(2, 4), (12, 14)]
+
+    @pytest.mark.parametrize("text", ["x == y == z", "`==code==`", "%%==hidden==%%", "[[a==b==c]]", "==**bold**=="])
+    def test_not_a_highlight(self, text):
+        assert scan_body(text).highlight_marks == []
 
 
 class TestLinks:

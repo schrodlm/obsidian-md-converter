@@ -455,3 +455,7 @@ class TestObsidianOnlySyntax:
         site = convert({"notes/tmux.md": "Body\n", "notes/Hello.md": "==see [[tmux]]==\n"})
         assert "**see [tmux](/notes/tmux.html)**\n" in site.page("_notes/hello.md")
 
+    def test_note_embed_becomes_a_link_to_the_note(self, convert):
+        site = convert({"notes/tmux.md": "Body\n", "notes/Hello.md": "Before\n![[tmux]]\nAfter\n"})
+        assert "Before\n[tmux](/notes/tmux.html)\nAfter\n" in site.page("_notes/hello.md")
+

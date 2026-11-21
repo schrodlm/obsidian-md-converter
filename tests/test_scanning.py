@@ -71,6 +71,21 @@ class TestHighlights:
         assert scan_body(text).highlight_marks == []
 
 
+class TestNoteEmbeds:
+    @pytest.mark.parametrize("text, note", [
+        ("![[Other note]]", "Other note"),
+        ("![[Other note#Usage|see]]", "Other note"),
+        ("![[Version 2.0 notes]]", "Version 2.0 notes"),
+    ])
+    def test_note_embed_is_a_link(self, text, note):
+        scanned = scan_body(text)
+        assert [link.note for link in scanned.links] == [note] and scanned.embeds == []
+
+    @pytest.mark.parametrize("text", ["![[a.png|200]]", "![[Scan.PDF]]"])
+    def test_file_embed_stays_an_embed(self, text):
+        assert scan_body(text).links == []
+
+
 class TestLinks:
     def test_link_parts_are_read_from_the_brackets(self):
         link = scan("[[logical contracts#Preconditions | precondition]]\n").links[0]

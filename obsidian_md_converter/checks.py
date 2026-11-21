@@ -76,6 +76,7 @@ def checks_for(config: Config, processor: Processor) -> list[Check]:
         UnnamablePage(processor),
         MissingImage(),
         MissingHeading(),
+        DataviewQuery(),
     ]
 
 
@@ -215,3 +216,13 @@ class MissingHeading(NoteCheck):
         if target is None or not link.heading or target.anchors.anchor_for(link.heading) is not None:
             return None
         return f"[[{link.raw}]] names heading '{link.heading}', which '{link.note}' does not have; linking to the page"
+
+
+class DataviewQuery(NoteCheck):
+    """A Dataview query in a note: a live view only Obsidian runs, so the page leaves it out."""
+    severity = Severity.WARNING
+
+    def find_in(self, note: IndexedNote, index: NoteIndex) -> Iterator[Problem]:
+        for line in note.dataview_lines:
+            yield Problem(self, "Dataview query left out of the page; only Obsidian can run it", note.source, line)
+

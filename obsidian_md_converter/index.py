@@ -1,6 +1,6 @@
 """The index: what a run knows about every published note before it writes any page."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from obsidian_md_converter.config import Config
@@ -56,6 +56,8 @@ class IndexedNote:
     links: list[WikiLink]
     # Images on the web are not the vault's, and are left out.
     images: list[ImageReference]
+    # The line of each Dataview query, which the page leaves out.
+    dataview_lines: list[int] = field(default_factory=list)
 
     def page_path(self, processor: Processor) -> Path:
         """
@@ -161,6 +163,7 @@ def _index_note(md_file: Path, content: str, mapping: Mapping, config: Config, p
         anchors=HeadingAnchors(scanned.body, processor.anchor_ids),
         links=scanned.links,
         images=_images([*scanned.embeds, *scanned.markdown_images], config),
+        dataview_lines=[block.span.line for block in scanned.dataview_blocks],
     )
 
 

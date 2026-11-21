@@ -93,6 +93,16 @@ class TestBlockReferences:
         assert (link.note, link.heading, link.display) == ("note", "", display)
 
 
+class TestDataview:
+    def test_dataview_fences_are_found_with_their_line(self):
+        note = scan_body("Intro\n```dataview\nTABLE x\n```\n```dataviewjs\ndv.list()\n```\n```python\ncode\n```\n")
+        assert [block.span.line for block in note.dataview_blocks] == [2, 5]
+
+    def test_dataview_inside_a_comment_is_only_the_comment(self):
+        note = scan_body("%%\n```dataview\nTABLE x\n```\n%%\n")
+        assert note.dataview_blocks == [] and len(note.comments) == 1
+
+
 class TestLinks:
     def test_link_parts_are_read_from_the_brackets(self):
         link = scan("[[logical contracts#Preconditions | precondition]]\n").links[0]

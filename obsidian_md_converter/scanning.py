@@ -5,7 +5,9 @@ from pathlib import Path
 from dataclasses import dataclass
 
 _FRONT_MATTER_RE = re.compile(r'^---\s*\n(?P<raw>.*?)\n---\s*\n', re.DOTALL)
-_FENCE_RE = re.compile(r'^[ \t]*(```|~~~)')
+_FENCE_RE = re.compile(r'^[ \t]*(```|~~~)(?P<info>.*)')
+# The languages of a fenced Dataview query.
+_DATAVIEW_LANGUAGES = {'dataview', 'dataviewjs'}
 _HEADING_RE = re.compile(r'^#{1,6}[ \t]+(?P<text>.*?)[ \t]*#*[ \t]*$')
 # Inline code may wrap lines but, like a paragraph, never crosses a blank line.
 _INLINE_CODE_RE = re.compile(r'(?P<ticks>`+)(?!`)(?:(?!\n[ \t]*\n).)*?(?<!`)(?P=ticks)(?!`)', re.DOTALL)
@@ -87,6 +89,12 @@ class Comment:
 
 
 @dataclass(frozen=True)
+class DataviewBlock:
+    """A fenced Dataview query (```dataview), a live view of other notes that only Obsidian runs; it is never published."""
+    span: Span
+
+
+@dataclass(frozen=True)
 class HighlightMark:
     """One of the two `==` around an Obsidian highlight, `==text==`, which a page writes as bold; the text between them
     is ordinary text."""
@@ -110,11 +118,13 @@ class ScannedNote:
     code: list[CodeRegion]
     comments: list[Comment]
     highlight_marks: list[HighlightMark]
+    dataview_blocks: list[DataviewBlock]
 
     @property
-    def replaceable(self) -> list[WikiLink | Embed | MarkdownImage | Comment | HighlightMark]:
+    def replaceable(self) -> list[WikiLink | Embed | MarkdownImage | Comment | HighlightMark | DataviewBlock]:
         """The structures a page may rewrite, in text order."""
-        structures = [*self.links, *self.embeds, *self.markdown_images, *self.comments, *self.highlight_marks]
+        structures = [*self.links, *self.embeds, *self.markdown_images, *self.comments, *self.highlight_marks,
+                      *self.dataview_blocks]
         return sorted(structures, key=lambda structure: structure.span.start)
 
 
@@ -139,7 +149,7 @@ def scan_body(body: str, front_matter: str | None = None, body_line: int = 1) ->
     """Record the structures of a note's body, already separated from its front matter."""
     locate = _Locator(body, body_line)
 
-    fenced, headings = _scan_lines(body, locate)
+    fenced, headings, dataview_blocks = _scan_lines(body, locate)
     inline_code = [
         CodeRegion(locate(match.start(), match.end()))
         for match in _INLINE_CODE_RE.finditer(body)
@@ -154,6 +164,7 @@ def scan_body(body: str, front_matter: str | None = None, body_line: int = 1) ->
     # Nothing inside code or a comment is a structure.
     hidden = [*code, *comments]
     headings = [heading for heading in headings if not _inside(heading.span.start, comments)]
+    dataview_blocks = [block for block in dataview_blocks if not _inside(block.span.start, comments)]
 
     links, embeds = [], []
     for match in _WIKILINK_RE.finditer(body):
@@ -201,21 +212,28 @@ def scan_body(body: str, front_matter: str | None = None, body_line: int = 1) ->
         code=code,
         comments=comments,
         highlight_marks=highlight_marks,
+        dataview_blocks=dataview_blocks,
     )
 
 
-def _scan_lines(body: str, locate: "_Locator") -> tuple[list[CodeRegion], list[Heading]]:
-    """Fenced code blocks and headings: the structures that occupy whole lines."""
-    fenced, headings = [], []
+def _scan_lines(body: str, locate: "_Locator") -> tuple[list[CodeRegion], list[Heading], list[DataviewBlock]]:
+    """Fenced code blocks, the Dataview queries among them, and headings: the structures that occupy whole lines."""
+    fenced, headings, dataview_blocks = [], [], []
     fence_start = None
+    fence_language = ''
     offset = 0
     for line in body.splitlines(keepends=True):
         text = line.rstrip('\r\n')
-        if _FENCE_RE.match(text):
+        fence = _FENCE_RE.match(text)
+        if fence:
             if fence_start is None:
                 fence_start = offset
+                fence_language = fence.group('info').strip().split(' ')[0].lower()
             else:
-                fenced.append(CodeRegion(locate(fence_start, offset + len(text))))
+                span = locate(fence_start, offset + len(text))
+                fenced.append(CodeRegion(span))
+                if fence_language in _DATAVIEW_LANGUAGES:
+                    dataview_blocks.append(DataviewBlock(span))
                 fence_start = None
         elif fence_start is None:
             heading = _HEADING_RE.match(text)
@@ -225,8 +243,11 @@ def _scan_lines(body: str, locate: "_Locator") -> tuple[list[CodeRegion], list[H
         offset += len(line)
     if fence_start is not None:
         # An unclosed fence runs to the end of the note, as in Obsidian.
-        fenced.append(CodeRegion(locate(fence_start, len(body))))
-    return fenced, headings
+        span = locate(fence_start, len(body))
+        fenced.append(CodeRegion(span))
+        if fence_language in _DATAVIEW_LANGUAGES:
+            dataview_blocks.append(DataviewBlock(span))
+    return fenced, headings, dataview_blocks
 
 
 def _wikilink(span: Span, inner: str) -> WikiLink:

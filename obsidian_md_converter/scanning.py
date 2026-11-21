@@ -13,6 +13,8 @@ _MARKDOWN_LINK_RE = re.compile(r'(?P<bang>!?)\[(?P<text>[^\]]*)\]\((?P<url>[^)]+
 _SIZE_RE = re.compile(r'^(?P<width>\d+)(?:x(?P<height>\d+))?$')
 # An Obsidian comment, %%hidden%%, which may span lines.
 _COMMENT_RE = re.compile(r'%%.*?%%', re.DOTALL)
+# An Obsidian highlight, ==text==, on one line, its text neither starting nor ending with a space.
+_HIGHLIGHT_RE = re.compile(r'==(?=\S)[^\n]*?(?<=\S)==')
 
 
 @dataclass(frozen=True)
@@ -79,6 +81,13 @@ class Comment:
 
 
 @dataclass(frozen=True)
+class HighlightMark:
+    """One of the two `==` around an Obsidian highlight, `==text==`, which a page writes as bold; the text between them
+    is ordinary text."""
+    span: Span
+
+
+@dataclass(frozen=True)
 class ScannedNote:
     """A note split into its front matter and body, with the body's structures in the order they appear.
 
@@ -94,11 +103,12 @@ class ScannedNote:
     markdown_images: list[MarkdownImage]
     code: list[CodeRegion]
     comments: list[Comment]
+    highlight_marks: list[HighlightMark]
 
     @property
-    def replaceable(self) -> list[WikiLink | Embed | MarkdownImage | Comment]:
+    def replaceable(self) -> list[WikiLink | Embed | MarkdownImage | Comment | HighlightMark]:
         """The structures a page may rewrite, in text order."""
-        structures = [*self.links, *self.embeds, *self.markdown_images, *self.comments]
+        structures = [*self.links, *self.embeds, *self.markdown_images, *self.comments, *self.highlight_marks]
         return sorted(structures, key=lambda structure: structure.span.start)
 
 
@@ -160,6 +170,18 @@ def scan_body(body: str, front_matter: str | None = None, body_line: int = 1) ->
         elif match.group('text'):
             markdown_links.append(MarkdownLink(span, match.group('text'), match.group('url')))
 
+    # A highlight's marks are replaced around the text, so neither may sit inside a link the page rewrites whole, and
+    # a highlight that is already bold inside (==**x**==) would become '****x****', so it stays as written.
+    rewritten = [*links, *embeds, *markdown_links, *markdown_images]
+    highlight_marks = []
+    for match in _HIGHLIGHT_RE.finditer(body):
+        marks = [(match.start(), match.start() + 2), (match.end() - 2, match.end())]
+        text = match.group()[2:-2]
+        if text.startswith('*') or text.endswith('*'):
+            continue
+        if not any(_inside(start, [*hidden, *rewritten]) for start, _ in marks):
+            highlight_marks += [HighlightMark(locate(start, end)) for start, end in marks]
+
     return ScannedNote(
         front_matter=front_matter,
         body=body,
@@ -171,6 +193,7 @@ def scan_body(body: str, front_matter: str | None = None, body_line: int = 1) ->
         markdown_images=markdown_images,
         code=code,
         comments=comments,
+        highlight_marks=highlight_marks,
     )
 
 
@@ -235,7 +258,8 @@ def _embed(span: Span, inner: str) -> Embed:
     return Embed(span, inner, parts[0], alt, width, height)
 
 
-def _inside(offset: int, regions: list[CodeRegion | Comment]) -> bool:
+def _inside(offset: int, regions: list) -> bool:
+    """Whether an offset falls within one of the regions, each anything with a span."""
     return any(region.span.start <= offset < region.span.end for region in regions)
 
 

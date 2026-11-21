@@ -143,7 +143,7 @@ Syntax with no form in this format has a defined outcome:
 | In the note | On the page |
 |---|---|
 | `%%comment%%` | removed |
-| `==highlight==` | its plain text |
+| `==highlight==` | bold: `**highlight**` |
 | `![[Other note]]`, a note embed | a link to that note |
 | `[[note#^block]]`, a block reference | a link to the note |
 | a Dataview block | removed, with a warning when converting |

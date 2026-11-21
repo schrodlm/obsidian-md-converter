@@ -406,3 +406,39 @@ class TestSeveralVaultFolders:
         site = convert({"uni/master/courses/NSWI035.md": "Body\n"}, mappings=self.COURSES)
         assert any("uni/bachelor/courses" in warning for warning in site.warnings)
         assert site.has("_courses/nswi035.md")
+
+
+class TestNormalizedMarkdown:
+    """With the markdown processor, links point at files relative to the linking page (docs/normalized-markdown.md)."""
+
+    MARKDOWN = {"type": "markdown"}
+    MAPPINGS = {"notes": "notes", "uni/master/courses": "courses", "publish/posts": "posts"}
+    NOTES = {
+        "notes/tmux.md": "## Prefix key\ntext\n",
+        "notes/Hello.md": "See [[tmux]] and [[#Below]].\n\n## Below\n",
+        "uni/master/courses/NSWI035.md": "See [[tmux#Prefix key|the prefix]] and ![[a.png|Flow|200]].\n",
+        "publish/posts/Turing Machine.md": "---\nlayout: post\ndate: 2024-12-20\n---\nBody\n",
+    }
+
+    def convert(self, convert):
+        return convert(self.NOTES | {"assets/images/a.png": b"png"}, mappings=self.MAPPINGS, processor=self.MARKDOWN)
+
+    def test_link_into_another_folder_climbs_out_of_its_own(self, convert):
+        page = self.convert(convert).page("courses/nswi035.md")
+        assert "[the prefix](../notes/tmux.md#prefix-key)" in page
+
+    def test_link_within_a_folder_names_the_file(self, convert):
+        assert "[tmux](tmux.md)" in self.convert(convert).page("notes/hello.md")
+
+    def test_link_to_an_own_heading_keeps_only_the_anchor(self, convert):
+        assert "[Below](#below)" in self.convert(convert).page("notes/hello.md")
+
+    def test_image_has_an_absolute_path_and_no_size(self, convert):
+        assert "![Flow](/assets/img/a.png)." in self.convert(convert).page("courses/nswi035.md")
+
+    def test_post_keeps_its_plain_name_and_gets_no_layout(self, convert):
+        site = self.convert(convert)
+        page = site.page("posts/turing-machine.md")
+        assert 'title: "Turing Machine"' in page
+        assert page.count("layout:") == 1
+

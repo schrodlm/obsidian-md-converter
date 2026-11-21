@@ -451,3 +451,7 @@ class TestObsidianOnlySyntax:
         assert "Keep  this.\n" in site.page("_notes/hello.md")
         assert site.warnings == []
 
+    def test_highlight_becomes_bold_with_its_link_still_rewritten(self, convert):
+        site = convert({"notes/tmux.md": "Body\n", "notes/Hello.md": "==see [[tmux]]==\n"})
+        assert "**see [tmux](/notes/tmux.html)**\n" in site.page("_notes/hello.md")
+

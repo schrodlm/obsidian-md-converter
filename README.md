@@ -138,10 +138,21 @@ What your site needs:
 - a Markdown renderer with GitHub tables, footnotes, math (`$…$`) and
   Obsidian-style callouts (`> [!note]`);
 - a way to turn links to `.md` files into URLs. MkDocs and VitePress do this
-  already; Hugo, Jekyll and Eleventy need a setting or a plugin; for Astro,
-  use a plugin such as `astro-rehype-relative-markdown-links`;
+  already; Hugo, Jekyll and Eleventy need a setting or a plugin;
 - the image folder served at the same path, as a static folder;
 - heading ids in GitHub's style, which most renderers use by default.
+
+**If your site serves each page at `/<folder>/<page>/`,** as Astro, Hugo and
+Eleventy sites usually do, let the converter write URLs instead, and your site
+needs no link plugin:
+
+```yaml
+processor:
+  type: markdown
+  links: urls        # [tmux](/notes/tmux/) instead of [tmux](../notes/tmux.md)
+```
+
+A mapping's `url:` changes where its URLs start, as for Jekyll below.
 
 ### `jekyll`: a Jekyll site
 
@@ -263,10 +274,11 @@ The command exits with `1` when there is an error, so scripts and CI notice.
 |---|---|
 | `paths.obsidian_root` | the vault; relative paths start at the config file |
 | `paths.output_root` | where the site's pages go |
-| `source_mappings` | the mappings: `source` or `sources`, `destination`, and for Jekyll an optional `url` |
+| `source_mappings` | the mappings: `source` or `sources`, `destination`, and an optional `url` where their URLs start |
 | `images.source_dir` | the vault's image folder, inside `obsidian_root` |
 | `images.destination_dir` | where images are copied, inside `output_root` |
 | `processor.type` | `markdown` or `jekyll` |
+| `processor.links` | Markdown only: `files` (default) or `urls` |
 | `processor.default_layout` | Jekyll only: the layout a page gets when it names none |
 | `processor.permalink` | Jekyll only: `pretty` for addresses ending in `/` |
 | `runtime.validate_only`, `runtime.force_create`, `runtime.fix_source` | defaults for `--validate`, `--force` and `--fix` |

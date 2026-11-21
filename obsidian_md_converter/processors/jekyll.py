@@ -1,12 +1,9 @@
 import datetime
-import re
 from pathlib import Path
 
+from obsidian_md_converter.processors.anchors import gfm_anchor_ids
 from obsidian_md_converter.processors.base import LinkTarget, PageImage, PageLink, Processor
 from obsidian_md_converter.utils import parse_date
-
-# What a GFM heading id drops: anything but a letter, a digit, '_', '-', a space or a tab.
-_GFM_NON_WORD_RE = re.compile(r'[^\w\- \t]')
 
 
 class JekyllProcessor(Processor):
@@ -63,23 +60,8 @@ class JekyllProcessor(Processor):
         return f"{target.start}/{target.neutral_path.with_suffix('').as_posix()}{ending}"
 
     def anchor_ids(self, heading_texts: list[str]) -> list[str]:
-        """
-        The ids kramdown gives a page's headings: Jekyll converts Markdown with kramdown, which reads it as
-        GitHub Flavored Markdown (GFM) by default.
-
-        An id is the heading's text lowercased, with punctuation dropped and each space or tab turned into '-'.
-        A repeated id gets '-1', '-2' and so on, counted across the page, which is why it takes every heading at once.
-
-        Example: ['Prefix key', '2-3 trees & B+', 'Prefix key'] -> ['prefix-key', '2-3-trees--b', 'prefix-key-1']
-        """
-        counts: dict[str, int] = {}
-        ids = []
-        for text in heading_texts:
-            base = _GFM_NON_WORD_RE.sub('', text.lower()).replace(' ', '-').replace('\t', '-')
-            count = counts.get(base, -1) + 1
-            counts[base] = count
-            ids.append(f"{base}-{count}" if count else base)
-        return ids
+        """The ids kramdown gives a page's headings: Jekyll converts Markdown with kramdown, which reads it as GFM."""
+        return gfm_anchor_ids(heading_texts)
 
     def front_matter_defaults(self) -> dict[str, str]:
         """

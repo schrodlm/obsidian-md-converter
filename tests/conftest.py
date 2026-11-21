@@ -57,6 +57,7 @@ def convert(tmp_path):
         mappings: vault folder -> site folder; only these folders are created, and only when a note is in them.
             A tuple of vault folders publishes them all into one site folder.
         urls: vault folder -> the url its mapping starts its addresses with
+        processor: the config's processor section; Jekyll with the 'note' layout by default
         existing_site: files already in the site before the run (site path -> content)
     """
 
@@ -69,6 +70,7 @@ def convert(tmp_path):
         mappings: dict[str | tuple[str, ...], str] | None = None,
         existing_site: dict[str, str | bytes] | None = None,
         urls: dict[str, str] | None = None,
+        processor: dict | None = None,
     ) -> ConvertedSite:
         vault_root = tmp_path / "vault"
         site_root = tmp_path / "site"
@@ -94,7 +96,7 @@ def convert(tmp_path):
                 for source, destination in mappings.items()
             ],
             "images": {"source_dir": "assets/images", "destination_dir": "assets/img"},
-            "processor": {"type": "jekyll", "default_layout": "note"},
+            "processor": processor or {"type": "jekyll", "default_layout": "note"},
         }))
         config = Config(config_path=config_file, validate_only=validate or None, force_create=force or None, fix_source=fix or None)
         problems, _ = run_conversion(config)

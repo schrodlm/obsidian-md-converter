@@ -6,7 +6,7 @@ import pytest
 
 from obsidian_md_converter.errors import ConfigError
 from obsidian_md_converter.front_matter import FrontMatter
-from obsidian_md_converter.processors import JekyllProcessor, processor_for
+from obsidian_md_converter.processors import JekyllProcessor, MarkdownProcessor, processor_for
 from obsidian_md_converter.processors.base import LinkTarget, PageImage, PageLink
 
 
@@ -97,6 +97,27 @@ class TestJekyllImageMarkdown:
         assert self.JEKYLL.image_markdown(image) == "![Flow](/assets/img/a.png)"
 
 
+class TestMarkdownProcessor:
+    MARKDOWN = MarkdownProcessor()
+
+    def test_dated_note_keeps_its_plain_name(self):
+        assert self.MARKDOWN.page_path(Path("turing-machine.md"), {"layout": "post", "date": "2024-12-20"}) == Path("turing-machine.md")
+
+    def test_link_points_at_the_file(self):
+        target = LinkTarget("/notes", Path("tmux.md"), Path("../notes/tmux.md"))
+        assert self.MARKDOWN.link_address(target) == "../notes/tmux.md"
+
+    def test_adds_no_front_matter_field(self):
+        assert self.MARKDOWN.front_matter_defaults() == {}
+
+    def test_image_has_no_size(self):
+        image = PageImage("Flow", "/assets/img/a.png", width="200", height="100")
+        assert self.MARKDOWN.image_markdown(image) == "![Flow](/assets/img/a.png)"
+
+    def test_anchors_follow_the_gfm_rule(self):
+        assert self.MARKDOWN.anchor_ids(["Prefix key", "Prefix key"]) == ["prefix-key", "prefix-key-1"]
+
+
 class TestProcessorFor:
     @staticmethod
     def config(processor: dict) -> SimpleNamespace:
@@ -112,6 +133,13 @@ class TestProcessorFor:
         processor = processor_for(self.config({}))
         assert isinstance(processor, JekyllProcessor)
         assert processor.front_matter_defaults() == {}
+
+    def test_markdown_type_gives_the_markdown_processor(self):
+        assert isinstance(processor_for(self.config({"type": "markdown"})), MarkdownProcessor)
+
+    def test_markdown_processor_takes_no_options(self):
+        with pytest.raises(ConfigError, match="markdown processor: default_layout"):
+            processor_for(self.config({"type": "markdown", "default_layout": "note"}))
 
     def test_unknown_type_raises(self):
         with pytest.raises(ConfigError, match="Unknown processor type 'astro'"):

@@ -1,4 +1,5 @@
-"""Rewriting one page: each Obsidian link, embed and Markdown image is handed to the links or images module."""
+"""Rewriting one page: each Obsidian link, embed and Markdown image is handed to the links or images module, and
+each Obsidian comment is removed."""
 
 from pathlib import Path
 
@@ -7,7 +8,7 @@ from obsidian_md_converter.links import NoteLinks, rewrite_wikilink
 from obsidian_md_converter.paths import ObsidianPath, OutputPath
 from obsidian_md_converter.processors.base import Processor
 from obsidian_md_converter import scanning
-from obsidian_md_converter.scanning import Embed, WikiLink
+from obsidian_md_converter.scanning import Comment, Embed, WikiLink
 
 
 def rewrite_references(filepath: Path, src_dir: ObsidianPath, dest_dir: OutputPath, copy_dir: Path, links: NoteLinks,
@@ -28,6 +29,8 @@ def rewrite_references(filepath: Path, src_dir: ObsidianPath, dest_dir: OutputPa
         original = note.body[structure.span.start:structure.span.end]
         if isinstance(structure, WikiLink):
             pieces.append(rewrite_wikilink(structure, links, processor))
+        elif isinstance(structure, Comment):
+            pieces.append('')
         elif isinstance(structure, Embed):
             pieces.append(rewrite_embed(structure, src_dir, dest_dir, copy_dir, processor))
         else:

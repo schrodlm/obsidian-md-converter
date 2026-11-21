@@ -11,6 +11,8 @@ _INLINE_CODE_RE = re.compile(r'(?P<ticks>`+)(?!`)(?:(?!\n[ \t]*\n).)*?(?<!`)(?P=
 _WIKILINK_RE = re.compile(r'(?P<bang>!?)\[\[(?P<inner>[^\]\[]+)\]\]')
 _MARKDOWN_LINK_RE = re.compile(r'(?P<bang>!?)\[(?P<text>[^\]]*)\]\((?P<url>[^)]+)\)')
 _SIZE_RE = re.compile(r'^(?P<width>\d+)(?:x(?P<height>\d+))?$')
+# An Obsidian comment, %%hidden%%, which may span lines.
+_COMMENT_RE = re.compile(r'%%.*?%%', re.DOTALL)
 
 
 @dataclass(frozen=True)
@@ -71,6 +73,12 @@ class CodeRegion:
 
 
 @dataclass(frozen=True)
+class Comment:
+    """An Obsidian comment, `%%hidden%%`; nothing inside it is a structure, and it is never published."""
+    span: Span
+
+
+@dataclass(frozen=True)
 class ScannedNote:
     """A note split into its front matter and body, with the body's structures in the order they appear.
 
@@ -85,11 +93,13 @@ class ScannedNote:
     markdown_links: list[MarkdownLink]
     markdown_images: list[MarkdownImage]
     code: list[CodeRegion]
+    comments: list[Comment]
 
     @property
-    def replaceable(self) -> list[WikiLink | Embed | MarkdownImage]:
+    def replaceable(self) -> list[WikiLink | Embed | MarkdownImage | Comment]:
         """The structures a page may rewrite, in text order."""
-        return sorted([*self.links, *self.embeds, *self.markdown_images], key=lambda structure: structure.span.start)
+        structures = [*self.links, *self.embeds, *self.markdown_images, *self.comments]
+        return sorted(structures, key=lambda structure: structure.span.start)
 
 
 def split_front_matter(content: str) -> tuple[str | None, str]:
@@ -120,10 +130,18 @@ def scan_body(body: str, front_matter: str | None = None, body_line: int = 1) ->
         if not _inside(match.start(), fenced)
     ]
     code = sorted([*fenced, *inline_code], key=lambda region: region.span.start)
+    comments = [
+        Comment(locate(match.start(), match.end()))
+        for match in _COMMENT_RE.finditer(body)
+        if not _inside(match.start(), code)
+    ]
+    # Nothing inside code or a comment is a structure.
+    hidden = [*code, *comments]
+    headings = [heading for heading in headings if not _inside(heading.span.start, comments)]
 
     links, embeds = [], []
     for match in _WIKILINK_RE.finditer(body):
-        if _inside(match.start(), code):
+        if _inside(match.start(), hidden):
             continue
         span = locate(match.start(), match.end())
         inner = match.group('inner')
@@ -134,7 +152,7 @@ def scan_body(body: str, front_matter: str | None = None, body_line: int = 1) ->
 
     markdown_links, markdown_images = [], []
     for match in _MARKDOWN_LINK_RE.finditer(body):
-        if _inside(match.start(), code):
+        if _inside(match.start(), hidden):
             continue
         span = locate(match.start(), match.end())
         if match.group('bang'):
@@ -152,6 +170,7 @@ def scan_body(body: str, front_matter: str | None = None, body_line: int = 1) ->
         markdown_links=markdown_links,
         markdown_images=markdown_images,
         code=code,
+        comments=comments,
     )
 
 
@@ -216,7 +235,7 @@ def _embed(span: Span, inner: str) -> Embed:
     return Embed(span, inner, parts[0], alt, width, height)
 
 
-def _inside(offset: int, regions: list[CodeRegion]) -> bool:
+def _inside(offset: int, regions: list[CodeRegion | Comment]) -> bool:
     return any(region.span.start <= offset < region.span.end for region in regions)
 
 
